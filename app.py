@@ -31,7 +31,11 @@ from config import (
 )
 from pipeline import adas, comparables, gate, pricing, routing, run
 
-st.set_page_config(page_title="Claims Triage", page_icon="🚗", layout="wide")
+st.set_page_config(
+    page_title="AI Assisted Damage Assessment and Claim Triage",
+    page_icon="🚗",
+    layout="wide",
+)
 
 SAMPLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "samples")
 
@@ -70,9 +74,9 @@ TIER_COLOUR = {
 # --------------------------------------------------------------------------
 
 with st.sidebar:
-    st.title("Claims Triage")
-    st.caption("Assessment and routing layer, between damage documentation "
-               "and estimate approval.")
+    st.title("Damage Assessment and Claim Triage")
+    st.caption("AI assisted assessment and routing, between damage "
+               "documentation and estimate approval.")
 
     claims = gate.list_claims()
     labels = {cid: f"{cid}" for cid, _ in claims}
@@ -345,8 +349,8 @@ if assessment.hidden_damage:
 st.divider()
 st.subheader("Draft estimate")
 st.caption(
-    f"Total ${assessment.estimate_total:,.2f} before deductible "
-    f"(${ctx.deductible:,.0f}). Pricing is stubbed — treat totals as illustrative."
+    f"Total \\${assessment.estimate_total:,.2f} before deductible "
+    f"(\\${ctx.deductible:,.0f}). Pricing is stubbed — treat totals as illustrative."
 )
 
 original = pd.DataFrame(

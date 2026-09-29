@@ -1,0 +1,6 @@
+# Streamlit's default primary color is alarm red (#FF4B4B), which it also
+# applies to the confidence progress bars. A claim at 0.93 confidence rendered
+# in red reads as a warning, which is the opposite of what the number means.
+# The bar shows magnitude; the routing tier carries the judgment.
+[theme]
+primaryColor = "#2D6A9F"
