@@ -1,5 +1,7 @@
 # AI Assisted Damage Assessment and Claim Triage
 
+[![tests](https://github.com/Waqqasali/auto-claims-ai-prototype/actions/workflows/ci.yml/badge.svg)](https://github.com/Waqqasali/auto-claims-ai-prototype/actions/workflows/ci.yml)
+
 An assessment and routing layer that sits between damage documentation and
 estimate approval in an auto physical damage claim.
 
