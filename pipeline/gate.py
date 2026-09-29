@@ -23,7 +23,7 @@ from pipeline.models import ClaimContext
 
 def load_claim_context(claim_id: str) -> ClaimContext:
     """Read claim data from the stubbed policy system."""
-    with open(os.path.join(DATA_DIR, "policies.json")) as fh:
+    with open(os.path.join(DATA_DIR, "policies.json"), encoding="utf-8") as fh:
         payload = json.load(fh)
 
     record = payload["claims"].get(claim_id)
@@ -49,7 +49,7 @@ def load_claim_context(claim_id: str) -> ClaimContext:
 
 def list_claims() -> list[tuple[str, str]]:
     """(claim_id, scenario description) for the UI picker."""
-    with open(os.path.join(DATA_DIR, "policies.json")) as fh:
+    with open(os.path.join(DATA_DIR, "policies.json"), encoding="utf-8") as fh:
         payload = json.load(fh)
     return [
         (cid, rec.get("_scenario", ""))

@@ -72,7 +72,7 @@ def _load_ledger() -> dict:
     if not os.path.exists(PHASH_LEDGER):
         return {}
     try:
-        with open(PHASH_LEDGER) as fh:
+        with open(PHASH_LEDGER, encoding="utf-8") as fh:
             return json.load(fh)
     except (OSError, json.JSONDecodeError):
         return {}
@@ -80,7 +80,7 @@ def _load_ledger() -> dict:
 
 def _save_ledger(ledger: dict) -> None:
     os.makedirs(RUNTIME_DIR, exist_ok=True)
-    with open(PHASH_LEDGER, "w") as fh:
+    with open(PHASH_LEDGER, "w", encoding="utf-8") as fh:
         json.dump(ledger, fh, indent=2)
 
 

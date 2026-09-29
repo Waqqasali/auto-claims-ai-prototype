@@ -31,7 +31,7 @@ _CACHE: dict | None = None
 def _table() -> dict:
     global _CACHE
     if _CACHE is None:
-        with open(os.path.join(DATA_DIR, "adas_zones.json")) as fh:
+        with open(os.path.join(DATA_DIR, "adas_zones.json"), encoding="utf-8") as fh:
             _CACHE = json.load(fh)
     return _CACHE
 

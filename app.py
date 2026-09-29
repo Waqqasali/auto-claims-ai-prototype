@@ -23,6 +23,7 @@ import pandas as pd
 import streamlit as st
 
 from config import (
+    MAX_REQUEST_ATTEMPTS,
     OVERRIDE_LOG,
     RUNTIME_DIR,
     TIER_STARTING_POINT_MIN,
@@ -115,10 +116,29 @@ with st.sidebar:
         )
 
     st.divider()
-    st.caption("**Stubbed components**")
-    st.caption(f"• Pricing — {pricing.STUB_NOTE}")
-    st.caption(f"• Comparables — {comparables.STUB_NOTE}")
-    st.caption("• Policy system — read from a local JSON fixture.")
+    with st.expander("Stubbed components"):
+        st.caption(f"**Pricing** — {pricing.STUB_NOTE}")
+        st.caption(f"**Comparables** — {comparables.STUB_NOTE}")
+        st.caption("**Policy system** — read from a local JSON fixture.")
+
+    SHOW_RATIONALE = st.toggle(
+        "Show design rationale",
+        value=False,
+        help="Explains why each part of this screen works the way it does. Off "
+             "by default: a claims agent needs the decision, not the argument "
+             "behind it.",
+    )
+
+
+def rationale(text):
+    """Design commentary, shown only when the reviewer asks for it.
+
+    The working surface carries what a claims agent needs to act. Why it is
+    built this way belongs in the PRD, and here behind a toggle. Mixing the
+    two is how a product screen turns into a pitch deck.
+    """
+    if SHOW_RATIONALE:
+        st.caption(text)
 
 
 # --------------------------------------------------------------------------
@@ -183,7 +203,7 @@ for reason in decision.reasons:
 if not result.gate_passed:
     st.divider()
     st.subheader("Why this claim was not processed")
-    st.caption(
+    rationale(
         "Every Tier 1 exclusion is a legal or wasted-spend reason. None of them "
         "are 'the model might do badly' — those are handled downstream by "
         "confidence and routing. A narrow processing gate is self-confirming: "
@@ -231,12 +251,13 @@ for i, photo in enumerate(result.photos):
 if result.evidence and result.evidence.status == "re_request":
     st.divider()
     st.subheader("Message sent to the policyholder")
-    st.caption(
-        "Specific and actionable, never 'send better photos'. Capped at two "
-        "attempts, then a person takes over. J.D. Power 2025: customers rating "
-        "a claims experience poor or just OK carry a 52% likelihood of switching "
-        "carriers, against 4% for excellent. A vague repeated ask is where an "
-        "efficiency feature destroys more value than it creates."
+    st.caption(f"Attempt {attempt} of {MAX_REQUEST_ATTEMPTS}. After that a person takes over.")
+    rationale(
+        "Specific and actionable, never 'send better photos'. J.D. Power 2025: "
+        "customers rating a claims experience poor or just OK carry a 52% "
+        "likelihood of switching carriers, against 4% for excellent. A vague "
+        "repeated ask is where an efficiency feature destroys more value than "
+        "it creates."
     )
     st.code(result.evidence.instruction, language=None)
     st.info(
@@ -249,7 +270,24 @@ if result.evidence and result.evidence.status == "re_request":
 
 if result.evidence and result.evidence.status == "escalate":
     st.divider()
+    st.subheader("Handed to a claims agent")
+    st.caption(
+        f"The re-request cap of {MAX_REQUEST_ATTEMPTS} was reached. A person "
+        "takes over from here, with the photographs and the reason each one "
+        "could not be used."
+    )
     st.error(result.evidence.escalation_reason, icon="👤")
+    st.info(
+        "No damage assessment was produced. The system stops rather than "
+        "guessing from evidence it has already judged inadequate.",
+        icon="🛑",
+    )
+    rationale(
+        "Two attempts, then stop asking. A third request is where an "
+        "efficiency feature starts damaging the relationship it was meant to "
+        "protect, and the claim still needs handling either way. Knowing when "
+        "to give up is a product decision, not a failure mode."
+    )
     st.stop()
 
 
@@ -268,11 +306,12 @@ with cc1:
         f"verify ≥ {TIER_VERIFY_MIN:.2f} · starting point ≥ "
         f"{TIER_STARTING_POINT_MIN:.2f}"
     )
-    st.caption(
-        "⚠️ **Not calibrated.** These thresholds are placeholders. In production "
-        "they are set by retrospective calibration against historical claims whose "
-        "final cost, including any supplement, is already known. "
-        "Naming a number before that data exists would be inventing a fact."
+    st.caption("⚠️ Thresholds are placeholders, not calibrated.")
+    rationale(
+        "In production they are set by retrospective calibration against "
+        "historical claims whose final cost, including any supplement, is "
+        "already known. Naming a number before that data exists would be "
+        "inventing a fact."
     )
 with cc2:
     st.dataframe(
@@ -282,12 +321,20 @@ with cc2:
                 {"signal": "evidence coverage", "value": conf.evidence_coverage},
                 {"signal": "retrieval density", "value": conf.retrieval_density},
                 {"signal": "cross-stage agreement", "value": conf.cross_stage_agreement},
-                {"signal": "ADAS penalty", "value": -conf.adas_penalty},
             ]
         ),
         hide_index=True,
         width='stretch',
+        column_config={
+            "value": st.column_config.NumberColumn("value", format="%.2f"),
+        },
     )
+    # A penalty is subtracted from the weighted sum, not averaged in with it,
+    # so showing it as a fifth signal would misdescribe the arithmetic.
+    if conf.adas_penalty:
+        st.caption(
+            f"Less a fixed **{conf.adas_penalty:.2f}** ADAS calibration penalty."
+        )
 
 with st.expander("Show the arithmetic"):
     for line in conf.explanation:
@@ -295,8 +342,7 @@ with st.expander("Show the arithmetic"):
     st.caption(
         "Anchored on the weakest line item rather than the mean. Ten items at "
         "0.90 and one at 0.60 is not a 0.87 claim — one badly wrong line ruins "
-        "an estimate, and averaging buries exactly the item that matters, which "
-        "is usually the sensor or structural item that generates the supplement."
+        "an estimate, and averaging buries exactly the item that matters."
     )
 
 
@@ -315,13 +361,14 @@ if adas_hits:
     st.markdown("**Calibration risk**")
     for line in adas.describe(adas_hits):
         st.warning(line, icon="📡")
-    st.caption(
-        "No calibration line item is priced. A photo cannot establish that "
-        "calibration is required — the damage may be a scuff nowhere near the "
-        "sensor bracket. Charging on suspicion overstates the estimate and "
-        "starts disputes with shops. CCC Q3 2025: calibrations appear on 35.6% "
-        "of DRP estimates, up from 26.9% year over year, and 51.5% of them show "
-        "up on supplements rather than initial estimates."
+    st.caption("No calibration line item is priced. This is a routing signal, not a charge.")
+    rationale(
+        "A photo cannot establish that calibration is required — the damage may "
+        "be a scuff nowhere near the sensor bracket. Charging on suspicion "
+        "overstates the estimate and starts disputes with shops. CCC Q3 2025: "
+        "calibrations appear on 35.6% of DRP estimates, up from 26.9% year over "
+        "year, and 51.5% of them show up on supplements rather than initial "
+        "estimates."
     )
 
 if assessment.hidden_damage:
@@ -333,11 +380,11 @@ if assessment.hidden_damage:
             else "rate unavailable (stubbed corpus)"
         )
         st.info(f"**{cand.part}** — {cand.rationale} _({rate})_", icon="🔧")
-    st.caption(
-        "Informational in the MVP, with no confidence penalty applied. Without "
-        "observed rates from a real claims corpus any weight would be arbitrary, "
-        "and the signal fires on nearly every claim — a signal that fires on "
-        "everything carries no information. Becomes rate-weighted once "
+    st.caption("Informational. No confidence penalty is applied in the MVP.")
+    rationale(
+        "Without observed rates from a real claims corpus any weight would be "
+        "arbitrary, and the signal fires on nearly every claim — a signal that "
+        "fires on everything carries no information. Becomes rate-weighted once "
         "comparables are connected."
     )
 
@@ -383,7 +430,11 @@ edited = st.data_editor(
         "confidence": st.column_config.ProgressColumn(
             "confidence", min_value=0.0, max_value=1.0, format="%.2f"
         ),
-        "priced": st.column_config.CheckboxColumn("priced", disabled=True),
+        "priced": st.column_config.CheckboxColumn(
+            "priced", disabled=True,
+            help="Whether the costing stage could price this line. Items it "
+                 "cannot price feed the cross-stage agreement signal.",
+        ),
         "panel": st.column_config.TextColumn("panel", disabled=True),
     },
     num_rows="fixed",
@@ -395,7 +446,7 @@ with st.expander("Why the model proposed each line"):
             f"**{li.operation} — {li.part}** _(confidence {li.confidence:.2f})_  \n"
             f"{li.reasoning}"
         )
-    st.caption(
+    rationale(
         "Reasoning is what makes an override meaningful. A reviewer cannot "
         "sensibly disagree with a number that carries no explanation."
     )
@@ -424,7 +475,7 @@ st.markdown("#### Reviewer decision")
 
 if changes:
     st.markdown(f"**{len(changes)} change(s) pending. Each needs a reason code.**")
-    st.caption(
+    rationale(
         "Reason codes are mandatory and are the point of this screen. Free text "
         "cannot be aggregated, and aggregation is what turns overrides into the "
         "evidence base for removing this gate later."
@@ -474,7 +525,7 @@ if submitted:
             for i, ch in enumerate(changes)
         ],
     }
-    with open(OVERRIDE_LOG, "a") as fh:
+    with open(OVERRIDE_LOG, "a", encoding="utf-8") as fh:
         fh.write(json.dumps(record) + "\n")
 
     st.success(
@@ -482,7 +533,7 @@ if submitted:
         f"`runtime/overrides.jsonl`.",
         icon="✅",
     )
-    st.caption(
+    rationale(
         "This record is the audit trail and the calibration input. Linking "
         "predicted confidence to realized override rate is how thresholds get "
         "set, and it is also what the NAIC model bulletin's documentation "
@@ -493,7 +544,8 @@ if submitted:
 # --- Accumulated override log -------------------------------------------
 if os.path.exists(OVERRIDE_LOG):
     with st.expander("Override log"):
-        rows = [json.loads(l) for l in open(OVERRIDE_LOG) if l.strip()]
+        with open(OVERRIDE_LOG, encoding="utf-8") as fh:
+            rows = [json.loads(l) for l in fh if l.strip()]
         st.caption(f"{len(rows)} decision(s) recorded across this session.")
         flat = []
         for r in rows:
