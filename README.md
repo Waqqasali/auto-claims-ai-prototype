@@ -133,7 +133,7 @@ Stage 4   confidence.py    composite score                 deterministic
 Stage 5   routing.py       tier decision                   deterministic
 ```
 
-**Two of eleven stages use a model.** The rest is deterministic on purpose.
+**Two of ten stages use a model.** The rest is deterministic on purpose.
 The eligibility gate and the confidence arithmetic are the auditable safety
 boundary — a model deciding how much to trust another model is not something
 you can explain to a regulator, and the NAIC model bulletin (adopted in 11
