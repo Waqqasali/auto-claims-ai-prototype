@@ -151,7 +151,7 @@ def screen(photo: Photo, ctx: ClaimContext, record_hash: bool = True) -> Photo:
     return photo
 
 
-def summarise(photos: list[Photo]) -> list[str]:
+def summarize(photos: list[Photo]) -> list[str]:
     """Distinct flags across the submission, for the review screen."""
     seen: list[str] = []
     for p in photos:

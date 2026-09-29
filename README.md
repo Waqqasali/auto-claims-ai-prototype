@@ -172,7 +172,7 @@ As important as what it does.
   yet.
 - **Not calibrated confidence.** Every threshold in `config.py` is a
   placeholder. In production they are set from shadow-mode data by plotting
-  predicted confidence against realised override rate and realised supplement
+  predicted confidence against realized override rate and realized supplement
   occurrence. Naming a calibrated number before that data exists would be
   inventing a fact.
 

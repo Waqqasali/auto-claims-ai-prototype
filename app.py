@@ -267,7 +267,7 @@ with cc1:
     st.caption(
         "⚠️ **Not calibrated.** These thresholds are placeholders. In production "
         "they are set from shadow-mode data by plotting predicted confidence "
-        "against realised override rate and realised supplement occurrence. "
+        "against realized override rate and realized supplement occurrence. "
         "Naming a number before that data exists would be inventing a fact."
     )
 with cc2:
@@ -480,7 +480,7 @@ if submitted:
     )
     st.caption(
         "This record is the audit trail and the calibration input. Linking "
-        "predicted confidence to realised override rate is how thresholds get "
+        "predicted confidence to realized override rate is how thresholds get "
         "set, and it is also what the NAIC model bulletin's documentation "
         "requirements are asking for — adopted in 11 states as of 2024."
     )

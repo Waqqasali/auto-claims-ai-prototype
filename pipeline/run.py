@@ -75,7 +75,7 @@ def run(
         photos.append(p)
     result.photos = photos
 
-    auth_flags = authenticity.summarise(photos)
+    auth_flags = authenticity.summarize(photos)
 
     # --- Stage 1c: coverage judgement (VLM) -------------------------------
     coverage = provider.assess_coverage(photos, ctx, vocabulary)

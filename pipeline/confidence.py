@@ -27,7 +27,7 @@ something you can explain to a regulator.
 NOT CALIBRATED
 Every weight and threshold in config.py is a placeholder. In production they
 are set from shadow-mode data by plotting predicted confidence against two
-realised outcomes: adjuster override rate, and supplement occurrence. This
+realized outcomes: adjuster override rate, and supplement occurrence. This
 module deliberately does not pretend otherwise.
 """
 

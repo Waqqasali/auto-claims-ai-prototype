@@ -3,10 +3,10 @@
 Every threshold here is a PLACEHOLDER. None of them are calibrated.
 
 In production these are set from shadow-mode data by plotting predicted
-confidence against two realised outcomes: adjuster override rate, and
+confidence against two realized outcomes: adjuster override rate, and
 supplement occurrence. Naming a calibrated number before that data exists
 would be inventing a fact, so these values exist only to make the prototype
-run and to make the routing behaviour visible.
+run and to make the routing behavior visible.
 """
 
 import os

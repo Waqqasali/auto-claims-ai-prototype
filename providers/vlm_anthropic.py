@@ -6,7 +6,7 @@ Note what is and is not model-dependent here. The model produces damage line
 items, reasoning and per-item confidence. It does NOT decide routing, compute
 the claim confidence score, apply the ADAS penalty or set thresholds. Those
 are deterministic and live outside this file, so a model swap cannot change
-the system's safety behaviour.
+the system's safety behavior.
 """
 
 import base64
