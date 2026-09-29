@@ -1,6 +1,23 @@
+# Python
 __pycache__/
 *.pyc
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Credentials. .env.example is committed; .env is not.
+.env
+
+# Runtime state. The directory is tracked via .gitkeep so a fresh clone has
+# somewhere to write; its contents are per-run and must not be committed.
 runtime/uploads/
 runtime/overrides.jsonl
 runtime/phash_ledger.json
-.env
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

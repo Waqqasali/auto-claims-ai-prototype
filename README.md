@@ -17,6 +17,8 @@ confidence score that drives routing.
 
 ## Run it
 
+Requires Python 3.11 or 3.12. Both are exercised in CI on every push.
+
 ```bash
 pip install -r requirements.txt
 streamlit run app.py
@@ -33,6 +35,9 @@ export ANTHROPIC_API_KEY=sk-ant-...
 export VLM_PROVIDER=anthropic
 streamlit run app.py
 ```
+
+Or copy `.env.example` to `.env` and fill in the key there. Both routes work;
+neither is required.
 
 ### Run the tests
 
@@ -190,4 +195,11 @@ samples/                synthetic test images + generator
 runtime/                override log, perceptual-hash ledger
 smoke_test.py           pipeline test, all scenarios
 ui_test.py              Streamlit script test, all scenarios
+.github/workflows/      CI: both suites, Python 3.11 and 3.12, no API key
 ```
+
+---
+
+## License
+
+MIT. See `LICENSE`.

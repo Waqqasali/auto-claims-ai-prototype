@@ -1,0 +1,55 @@
+name: tests
+
+# The question a reviewer actually has is "does this run on a machine that is
+# not the author's?" These two suites answer it on every push, on a clean
+# runner, with nothing cached from a working environment.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # No ANTHROPIC_API_KEY is set anywhere in this workflow. That is
+      # deliberate: it proves the default mock provider runs with no
+      # credentials and no network access to a model endpoint.
+      - name: Pipeline smoke test (all six claims, no UI)
+        run: python smoke_test.py
+
+      - name: Streamlit UI test (every scenario, headless)
+        run: python ui_test.py
+
+      - name: Confirm the live provider imports without a key
+        run: |
+          python -c "
+          import providers.vlm_anthropic as m
+          print('module imports cleanly:', m.AnthropicVLM.name)
+          try:
+              m.AnthropicVLM()
+              raise SystemExit('FAIL: constructed without a key')
+          except RuntimeError as e:
+              assert 'ANTHROPIC_API_KEY' in str(e), e
+              print('correct error without a key:', e)
+          "

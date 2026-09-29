@@ -11,6 +11,16 @@ run and to make the routing behavior visible.
 
 import os
 
+# Load a local .env file when one exists and python-dotenv is installed. Both
+# are optional. Every value below falls back to a working default and the
+# default provider needs no credentials, so a missing .env changes nothing.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    pass
+
 # --- Provider selection -----------------------------------------------------
 # "mock" runs with no API key and returns deterministic canned assessments.
 # "anthropic" makes real vision calls. Set VLM_PROVIDER=anthropic and

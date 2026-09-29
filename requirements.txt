@@ -1,5 +1,18 @@
-streamlit>=1.40
-pillow>=10.0
-imagehash>=4.3
-pandas>=2.0
-anthropic>=0.40
+# Upper bounds are deliberate. This repository is a point-in-time artifact and
+# a reviewer may clone it months from now; an unbounded major version upgrade
+# would break the demo silently. Versions below are the ones it was built and
+# tested against.
+
+streamlit>=1.40,<2.0        # tested against 1.64
+pillow>=10.0,<13.0          # tested against 12.2
+imagehash>=4.3,<5.0         # tested against 4.3.2
+pandas>=2.0,<4.0            # tested against 3.0.2
+
+# Only needed for live vision calls (VLM_PROVIDER=anthropic). The default
+# provider is a deterministic mock and requires neither this package's
+# credentials nor a network connection.
+anthropic>=0.40,<2.0        # tested against 1.9.0
+
+# Optional convenience: lets you keep credentials in a local .env file instead
+# of exporting them. The application runs without it.
+python-dotenv>=1.0,<2.0
