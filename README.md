@@ -1,4 +1,4 @@
-# Claims Triage
+# Assisted Damage Assessment and Claim Triage
 
 An assessment and routing layer that sits between damage documentation and
 estimate approval in an auto physical damage claim.
