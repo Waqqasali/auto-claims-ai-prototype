@@ -87,7 +87,7 @@ def run(
         result.decision = routing.Decision(
             tier="escalated" if verdict.status == "escalate" else "re_request",
             headline=(
-                "Escalated to an adjuster"
+                "Escalated to a claims agent"
                 if verdict.status == "escalate"
                 else f"Additional photos requested (attempt {attempt} of "
                      f"{evidence.MAX_REQUEST_ATTEMPTS})"

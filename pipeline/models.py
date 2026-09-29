@@ -125,7 +125,7 @@ class ConfidenceBreakdown:
 
 @dataclass
 class Decision:
-    """What the adjuster is shown, and why."""
+    """What the reviewer is shown, and why."""
     tier: str                 # not_processed | verify | starting_point | low_confidence
     headline: str
     reasons: list[str] = field(default_factory=list)

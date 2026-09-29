@@ -1,11 +1,11 @@
-"""Adjuster review screen.
+"""Claims agent review screen.
 
 This is the human control surface, and it is the most important non-AI
 component in the product. It is also the one that gets removed first, so it
 has to earn that by proving itself.
 
 Two things it must do:
-  1. Show the adjuster everything the system used: photos, line items,
+  1. Show the reviewer everything the system used: photos, line items,
      reasoning, confidence arithmetic, flags. Nothing hidden.
   2. Capture overrides WITH A REASON CODE. Free text cannot be aggregated,
      and aggregation is the entire point — override reasons are the training
@@ -266,8 +266,8 @@ with cc1:
     )
     st.caption(
         "⚠️ **Not calibrated.** These thresholds are placeholders. In production "
-        "they are set from shadow-mode data by plotting predicted confidence "
-        "against realized override rate and realized supplement occurrence. "
+        "they are set by retrospective calibration against historical claims whose "
+        "final cost, including any supplement, is already known. "
         "Naming a number before that data exists would be inventing a fact."
     )
 with cc2:
@@ -392,7 +392,7 @@ with st.expander("Why the model proposed each line"):
             f"{li.reasoning}"
         )
     st.caption(
-        "Reasoning is what makes an override meaningful. An adjuster cannot "
+        "Reasoning is what makes an override meaningful. A reviewer cannot "
         "sensibly disagree with a number that carries no explanation."
     )
 
@@ -416,7 +416,7 @@ for idx in range(len(original)):
                 }
             )
 
-st.markdown("#### Adjuster decision")
+st.markdown("#### Reviewer decision")
 
 if changes:
     st.markdown(f"**{len(changes)} change(s) pending. Each needs a reason code.**")

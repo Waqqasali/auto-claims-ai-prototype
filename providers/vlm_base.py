@@ -11,7 +11,7 @@ What would degrade in that deployment, stated honestly: fine-grained part
 identification. A smaller local model is likely to confuse adjacent panels
 and specific trim parts more often. That shows up as lower per-item
 confidence, which the composite score already consumes, which narrows the
-band of claims that can be handled without an adjuster. The system degrades
+band of claims that can be handled without a claims agent. The system degrades
 gracefully into more human review rather than into wrong answers.
 
 Everything downstream of this interface — costing, ADAS intersection,

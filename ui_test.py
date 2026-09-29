@@ -5,7 +5,7 @@ import sys
 CASES = [("CLM-1001",1),("CLM-1002",1),("CLM-1002",2),("CLM-1003",1),
          ("CLM-1004",1),("CLM-1005",1),("CLM-1006",1)]
 TIERS = ["VERIFY","STARTING POINT","LOW CONFIDENCE","MORE PHOTOS NEEDED",
-         "ESCALATED TO ADJUSTER","NOT PROCESSED"]
+         "ESCALATED TO AGENT","NOT PROCESSED"]
 fails = 0
 for claim_id, attempt in CASES:
     at = AppTest.from_file("app.py", default_timeout=120)

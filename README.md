@@ -58,7 +58,7 @@ Six claims are pre-loaded. Pick them from the sidebar.
 |---|---|---|
 | **CLM-1001** | 2015 Honda Civic, door dent. Pre-ADAS vehicle, non-sensor panel | `VERIFY` at 0.93 |
 | **CLM-1002** attempt 1 | Blurry, dark and low-resolution photos | `MORE PHOTOS NEEDED` — specific re-request issued |
-| **CLM-1002** attempt 2 | Still inadequate | `ESCALATED TO ADJUSTER` — attempt cap reached |
+| **CLM-1002** attempt 2 | Still inadequate | `ESCALATED TO AGENT` — attempt cap reached |
 | **CLM-1003** | 2021 Toyota Camry, rear bumper scuff | `STARTING POINT` at 0.60 |
 | **CLM-1004** | Photo EXIF timestamp predates the reported loss | `STARTING POINT`, authenticity flag raised, **not denied** |
 | **CLM-1005** | Bodily injury reported | `NOT PROCESSED` |
@@ -157,7 +157,7 @@ changing one environment variable.
 What degrades, stated honestly: fine-grained part identification. A smaller
 local model will confuse adjacent panels and trim parts more often. That shows
 up as lower per-item confidence, which the composite score already consumes,
-which narrows the band handled without an adjuster. **The system degrades into
+which narrows the band handled without a claims agent. **The system degrades into
 more human review rather than into wrong answers.**
 
 Everything downstream of that interface — costing, ADAS intersection,
@@ -178,9 +178,9 @@ As important as what it does.
   model is a production decision requiring evaluation data that does not exist
   yet.
 - **Not calibrated confidence.** Every threshold in `config.py` is a
-  placeholder. In production they are set from shadow-mode data by plotting
-  predicted confidence against realized override rate and realized supplement
-  occurrence. Naming a calibrated number before that data exists would be
+  placeholder. In production they are set by retrospective calibration against a
+  recent historical sample where the final cost including any supplement is
+  already known. Naming a calibrated number before that data exists would be
   inventing a fact.
 
 ---
@@ -188,7 +188,7 @@ As important as what it does.
 ## Layout
 
 ```
-app.py                  adjuster review screen
+app.py                  claims agent review screen
 config.py               every tunable parameter, all placeholders
 pipeline/               stages, one module each
 providers/              VLM abstraction + mock + Anthropic

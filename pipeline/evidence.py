@@ -111,7 +111,7 @@ def evaluate(
             missing=missing,
             escalation_reason=(
                 f"Evidence still insufficient after {attempt} attempts. "
-                "Routed to an adjuster rather than asking the claimant again."
+                "Routed to a claims agent rather than asking the claimant again."
             ),
             coverage_score=score,
         )

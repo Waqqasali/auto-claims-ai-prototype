@@ -2,9 +2,10 @@
 
 Every threshold here is a PLACEHOLDER. None of them are calibrated.
 
-In production these are set from shadow-mode data by plotting predicted
-confidence against two realized outcomes: adjuster override rate, and
-supplement occurrence. Naming a calibrated number before that data exists
+In production these are set by retrospective calibration: the system is run
+against a recent historical sample where the final cost including any
+supplement is already known, and predicted confidence is plotted against
+those realized outcomes. Naming a calibrated number before that data exists
 would be inventing a fact, so these values exist only to make the prototype
 run and to make the routing behavior visible.
 """

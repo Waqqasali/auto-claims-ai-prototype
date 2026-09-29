@@ -26,8 +26,8 @@ something you can explain to a regulator.
 
 NOT CALIBRATED
 Every weight and threshold in config.py is a placeholder. In production they
-are set from shadow-mode data by plotting predicted confidence against two
-realized outcomes: adjuster override rate, and supplement occurrence. This
+are set by retrospective calibration against a recent historical sample where
+the final cost including any supplement is already known. This
 module deliberately does not pretend otherwise.
 """
 
@@ -106,12 +106,12 @@ def compute(
     # ("38% of 340 comparable claims involved radiator support damage"). The
     # stub has no rates, and inventing weights would be fabricating evidence.
     #
-    # So in the MVP these are surfaced to the adjuster as information, and the
+    # So in the MVP these are surfaced to the reviewer as information, and the
     # penalty is switched on — rate-weighted — once comparables are real.
     if assessment.hidden_damage:
         explanation.append(
             f"{len(assessment.hidden_damage)} hidden damage candidate(s) shown "
-            f"to the adjuster for information. No confidence penalty applied: "
+            f"to the reviewer for information. No confidence penalty applied: "
             f"without observed rates from a real claims corpus any weight would "
             f"be arbitrary, and the signal fires on nearly every claim. Becomes "
             f"rate-weighted when comparables are connected."

@@ -1,12 +1,12 @@
-"""Routing: what the adjuster is shown, and how it is framed.
+"""Routing: what the reviewer is shown, and how it is framed.
 
 In the MVP, EVERY claim that clears the Tier 1 gate is reviewed by a human.
 Nothing is auto-approved. Routing therefore does not decide whether a person
-is involved — it decides how the draft is PRESENTED, so the adjuster knows
+is involved — it decides how the draft is PRESENTED, so the reviewer knows
 how much to trust it.
 
 That framing matters. A low-confidence draft is still worth showing, because
-even a partial line item list saves typing. What destroys adjuster trust is a
+even a partial line item list saves typing. What destroys reviewer trust is a
 bad draft presented as a good one.
 
 Automated authority is a Phase 3 concept and lives behind AUTOMATION_ENABLED,
@@ -94,7 +94,7 @@ TIER_LABELS = {
     "starting_point": "STARTING POINT",
     "low_confidence": "LOW CONFIDENCE",
     "re_request": "MORE PHOTOS NEEDED",
-    "escalated": "ESCALATED TO ADJUSTER",
+    "escalated": "ESCALATED TO AGENT",
     "not_processed": "NOT PROCESSED",
 }
 

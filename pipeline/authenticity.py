@@ -112,7 +112,7 @@ def screen(photo: Photo, ctx: ClaimContext, record_hash: bool = True) -> Photo:
             flags.append(
                 f"Capture time is {delta} days after the reported loss, outside "
                 f"the {CAPTURE_WINDOW_DAYS_AFTER}-day window. Not suspicious on "
-                "its own; worth an adjuster's eye alongside the other signals."
+                "its own; worth a reviewer's eye alongside the other signals."
             )
 
     # --- 3. Editing software signature -----------------------------------
