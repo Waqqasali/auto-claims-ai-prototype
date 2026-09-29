@@ -1,0 +1,52 @@
+{
+  "_comment": "Maps vehicle to the body panels that carry or sit adjacent to ADAS sensors. STUBBED: five vehicles hand-entered. In production this is licensed reference data from an estimating data provider, covering every year/make/model. The product decision being demonstrated is what the flag DOES (reduce confidence, change routing), not the completeness of this table.",
+  "_panel_vocabulary": [
+    "front_bumper", "front_grille", "hood", "windshield",
+    "left_front_fender", "right_front_fender",
+    "left_mirror", "right_mirror",
+    "left_front_door", "right_front_door",
+    "left_rear_door", "right_rear_door",
+    "left_quarter_panel", "right_quarter_panel",
+    "rear_bumper", "trunk_lid", "tailgate", "rear_glass", "roof",
+    "left_front_wheel", "right_front_wheel", "left_rear_wheel", "right_rear_wheel"
+  ],
+  "vehicles": {
+    "2021|toyota|camry": {
+      "front_bumper": ["forward collision radar", "front parking sensors"],
+      "front_grille": ["forward collision radar"],
+      "windshield": ["forward-facing camera (lane keeping, pre-collision)"],
+      "rear_bumper": ["rear parking sensors", "rear cross-traffic radar (corners)"],
+      "left_mirror": ["blind spot monitor indicator"],
+      "right_mirror": ["blind spot monitor indicator"]
+    },
+    "2022|honda|cr-v": {
+      "front_bumper": ["radar sensor (adaptive cruise, collision braking)", "front parking sensors"],
+      "front_grille": ["radar sensor (adaptive cruise, collision braking)"],
+      "windshield": ["forward-facing camera (lane keeping)"],
+      "rear_bumper": ["rear parking sensors", "cross-traffic monitor"],
+      "right_mirror": ["LaneWatch camera"]
+    },
+    "2019|ford|f-150": {
+      "front_bumper": ["adaptive cruise radar", "front parking sensors"],
+      "front_grille": ["adaptive cruise radar", "360 camera"],
+      "windshield": ["forward-facing camera"],
+      "rear_bumper": ["rear parking sensors"],
+      "tailgate": ["rear camera"],
+      "left_mirror": ["blind spot radar", "surround view camera"],
+      "right_mirror": ["blind spot radar", "surround view camera"]
+    },
+    "2023|tesla|model 3": {
+      "front_bumper": ["forward camera array"],
+      "windshield": ["triple forward camera assembly"],
+      "left_front_fender": ["forward-looking side camera"],
+      "right_front_fender": ["forward-looking side camera"],
+      "left_mirror": ["rearward-looking side camera"],
+      "right_mirror": ["rearward-looking side camera"],
+      "rear_bumper": ["parking sensors"],
+      "trunk_lid": ["rear camera"]
+    },
+    "2015|honda|civic": {
+      "_note": "Pre-ADAS trim. Included deliberately: identical damage on this vehicle carries no calibration risk, which shows the flag is vehicle-specific rather than blanket."
+    }
+  }
+}

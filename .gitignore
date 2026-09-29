@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+runtime/uploads/
+runtime/overrides.jsonl
+runtime/phash_ledger.json
+.env

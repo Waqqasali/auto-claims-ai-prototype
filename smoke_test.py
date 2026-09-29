@@ -1,0 +1,55 @@
+"""End-to-end smoke test across all six demo claims. Mock provider, no key."""
+import glob, os, sys
+from pipeline import run, routing
+
+S = os.path.join(os.path.dirname(os.path.abspath(__file__)), "samples")
+def s(*names): return [os.path.join(S, n) for n in names]
+
+CASES = [
+    ("CLM-1001", s("good_a.jpg", "good_b.jpg", "good_c.jpg"), 1),
+    ("CLM-1002", s("bad_blurry.jpg", "bad_dark.jpg", "bad_lowres.jpg"), 1),
+    ("CLM-1002", s("bad_blurry.jpg", "bad_dark.jpg"), 2),   # attempt cap
+    ("CLM-1003", s("bumper_a.jpg", "bumper_b.jpg", "bumper_c.jpg"), 1),
+    ("CLM-1004", s("stale_timestamp.jpg", "stale_timestamp_2.jpg"), 1),
+    ("CLM-1005", s("good_a.jpg"), 1),
+    ("CLM-1006", s("good_a.jpg"), 1),
+]
+
+fails = 0
+for claim_id, paths, attempt in CASES:
+    print("=" * 74)
+    try:
+        r = run.run(claim_id, paths, attempt=attempt, record_hashes=False)
+    except Exception as e:
+        print(f"{claim_id} attempt {attempt}: EXCEPTION {type(e).__name__}: {e}")
+        fails += 1
+        continue
+    print(f"{claim_id}  attempt {attempt}  |  {r.context.vehicle_label}")
+    print(f"  gate passed : {r.gate_passed}")
+    if r.gate_reasons:
+        for g in r.gate_reasons: print(f"    - {g[:88]}")
+    if r.evidence:
+        print(f"  evidence    : {r.evidence.status}  coverage={r.evidence.coverage_score}")
+    for p in r.photos:
+        bits = []
+        if p.quality_issues: bits.append("QUALITY:" + "|".join(i.split("(")[0].strip() for i in p.quality_issues))
+        if p.authenticity_flags: bits.append(f"AUTH:{len(p.authenticity_flags)}")
+        print(f"    {p.filename:24s} {p.width}x{p.height} sharp={p.sharpness:8.1f} bright={p.brightness:6.1f} {' '.join(bits)}")
+    if r.assessment:
+        print(f"  line items  : {len(r.assessment.line_items)}  total=${r.assessment.estimate_total:,.2f}")
+        for li in r.assessment.line_items:
+            print(f"    {li.operation:9s} {li.panel:20s} conf={li.confidence:.2f} priced={li.priced} ${li.price or 0:,.2f}")
+        if r.assessment.adas_zones_involved:
+            print(f"  ADAS zones  : {r.assessment.adas_zones_involved}")
+        if r.assessment.hidden_damage:
+            print(f"  hidden dmg  : {[h.part for h in r.assessment.hidden_damage]}")
+    if r.confidence:
+        c = r.confidence
+        print(f"  confidence  : {c.claim_confidence}  (floor={c.line_item_floor} cov={c.evidence_coverage} ret={c.retrieval_density} agree={c.cross_stage_agreement} adas=-{c.adas_penalty})")
+    if r.decision:
+        print(f"  DECISION    : [{routing.TIER_LABELS.get(r.decision.tier, r.decision.tier)}] {r.decision.headline}")
+        for rs in r.decision.reasons: print(f"    * {rs[:92]}")
+
+print("=" * 74)
+print("FAILURES:", fails)
+sys.exit(1 if fails else 0)

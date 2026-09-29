@@ -1,0 +1,60 @@
+"""Tunable parameters, all in one place.
+
+Every threshold here is a PLACEHOLDER. None of them are calibrated.
+
+In production these are set from shadow-mode data by plotting predicted
+confidence against two realised outcomes: adjuster override rate, and
+supplement occurrence. Naming a calibrated number before that data exists
+would be inventing a fact, so these values exist only to make the prototype
+run and to make the routing behaviour visible.
+"""
+
+import os
+
+# --- Provider selection -----------------------------------------------------
+# "mock" runs with no API key and returns deterministic canned assessments.
+# "anthropic" makes real vision calls. Set VLM_PROVIDER=anthropic and
+# ANTHROPIC_API_KEY to use it.
+VLM_PROVIDER = os.environ.get("VLM_PROVIDER", "mock")
+ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-5")
+
+# --- Stage 1: image quality -------------------------------------------------
+MIN_SHARPNESS = 60.0        # variance of Laplacian below this reads as blurry
+MIN_BRIGHTNESS = 45.0       # mean luminance; below this is too dark to assess
+MAX_BRIGHTNESS = 225.0      # above this is blown out
+MIN_LONG_EDGE_PX = 800      # smaller than this loses the detail we need
+
+# --- Stage 1: re-request loop ----------------------------------------------
+MAX_REQUEST_ATTEMPTS = 2    # after this, a human takes over
+
+# --- Stage 1: authenticity --------------------------------------------------
+# How far a photo's capture time may sit from the reported loss date before
+# it is flagged. Generous on purpose: people photograph damage days later.
+CAPTURE_WINDOW_DAYS_BEFORE = 0      # a photo taken BEFORE the loss is a flag
+CAPTURE_WINDOW_DAYS_AFTER = 14
+PHASH_DUPLICATE_DISTANCE = 8        # Hamming distance below this = likely reuse
+
+# --- Stage 4: confidence ----------------------------------------------------
+# Weighting is anchored to the weakest line item, not the mean. One badly
+# wrong line ruins an estimate, and averaging hides exactly that item.
+W_LINE_ITEM_FLOOR = 0.45
+W_EVIDENCE_COVERAGE = 0.25
+W_RETRIEVAL_DENSITY = 0.15
+W_CROSS_STAGE_AGREEMENT = 0.15
+
+ADAS_CONFIDENCE_PENALTY = 0.25      # flat subtraction when a sensor zone is hit
+HIDDEN_DAMAGE_PENALTY_EACH = 0.05   # per candidate, capped below
+HIDDEN_DAMAGE_PENALTY_CAP = 0.15
+AUTHENTICITY_FLAG_PENALTY = 0.20
+
+# --- Stage 5: routing tiers -------------------------------------------------
+TIER_VERIFY_MIN = 0.80              # >= this: present as a draft to verify
+TIER_STARTING_POINT_MIN = 0.55      # >= this: present as a starting point
+# below TIER_STARTING_POINT_MIN: present as low confidence, do not anchor
+
+# --- Paths ------------------------------------------------------------------
+DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+SAMPLES_DIR = os.path.join(os.path.dirname(__file__), "samples")
+RUNTIME_DIR = os.path.join(os.path.dirname(__file__), "runtime")
+OVERRIDE_LOG = os.path.join(RUNTIME_DIR, "overrides.jsonl")
+PHASH_LEDGER = os.path.join(RUNTIME_DIR, "phash_ledger.json")
