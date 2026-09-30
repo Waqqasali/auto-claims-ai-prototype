@@ -21,7 +21,7 @@ say so, because the PRD then needs the same change.
 pip install -r requirements.txt
 streamlit run app.py        # mock mode by default, no API key needed
 python smoke_test.py        # pipeline across all seven claims
-python ui_test.py           # the Streamlit script itself, about 40 checks
+python ui_test.py           # the Streamlit script itself, about 45 checks
 ```
 
 Live vision calls: copy `.env.example` to `.env`, set `VLM_PROVIDER=anthropic`
@@ -31,6 +31,11 @@ Live model answers are cached in `runtime/vlm_cache/`, keyed on the model,
 the prompt and the photo bytes, so a claim is assessed once per photo set.
 Delete that folder to force fresh calls. Changing a prompt invalidates the
 cache for it automatically.
+
+In live mode, a claim whose only images are synthetic samples (CLM-1003,
+CLM-1004, CLM-1007) is never sent to the model; it uses the scripted
+assessment and says so on screen. The model would find no vehicle in a test
+image and escalate it. Uploaded photographs always go live.
 
 Both suites must pass before any commit. After changing `app.py`, also run the
 app and look at every screen the change touches; several past defects were

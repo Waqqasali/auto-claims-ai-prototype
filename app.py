@@ -272,11 +272,20 @@ with st.sidebar:
     if scenario:
         st.info(scenario, icon="🎬")
         if VLM_PROVIDER == "anthropic":
-            # The scenario's "Expect:" is the scripted mock result. In live mode
-            # the model writes its own line items, so the tier can differ.
-            st.caption("Live mode: the model reads the photographs and writes "
-                       "its own line items, so the result can differ from the "
-                       "expectation above.")
+            if all(p in SYNTHETIC_SAMPLES
+                   for p in SCENARIO_PHOTOS.get((claim_id, 1), [])):
+                # Synthetic test files are never sent to the model, so the
+                # scripted expectation holds in live mode too.
+                st.caption("Live mode: this claim's sample images are "
+                           "synthetic test files, so they are never sent to "
+                           "the model and the expectation above holds.")
+            else:
+                # The scenario's "Expect:" is the scripted mock result. In live
+                # mode the model writes its own line items, so the tier can
+                # differ.
+                st.caption("Live mode: the model reads the photographs and "
+                           "writes its own line items, so the result can "
+                           "differ from the expectation above.")
 
     attempt = st.radio(
         "Submission attempt", [1, 2], horizontal=True,
@@ -464,11 +473,21 @@ if not paths:
 # on two claims" screen never fired, while the README, the PRD and this screen
 # all said it did. Same-claim matches are skipped, so re-rendering a claim
 # never flags its own photographs.
+# A claim whose only images are synthetic test files is never sent to the live
+# model. The model would rightly find no vehicle to assess and escalate, which
+# says nothing about the product. Those claims use their scripted assessment in
+# every mode, and the screen says so. Uploading real photographs to them runs
+# them live as normal.
+scripted_only = bool(
+    VLM_PROVIDER == "anthropic" and not uploaded and not using_sample and paths
+    and all(os.path.basename(p) in SYNTHETIC_SAMPLES for p in paths)
+)
+
 try:
     # Live answers are cached per photo set, so only the first look at a claim
     # waits on the model. Say so while it happens, rather than showing a
     # frozen page.
-    if VLM_PROVIDER == "anthropic":
+    if VLM_PROVIDER == "anthropic" and not scripted_only:
         with st.spinner("The model is reading the photographs. The first look "
                         "at a claim takes about 10 to 20 seconds; after that "
                         "it is instant."):
@@ -480,6 +499,7 @@ try:
         result = run.run(
             claim_id, paths, attempt=attempt, record_hashes=True,
             user_photos=bool(uploaded) or using_sample,
+            provider_name="mock" if scripted_only else None,
         )
 except Exception as exc:
     # In live mode this is usually the vision API: a timeout, a rate limit, a
@@ -512,7 +532,16 @@ ctx = result.context
 # Header and decision
 # --------------------------------------------------------------------------
 
-if uploaded and not result.gate_passed:
+if scripted_only and result.gate_passed:
+    st.info(
+        "**Scripted assessment for this claim.** Its sample images are "
+        "synthetic test files, not photographs of a vehicle, so they are not "
+        "sent to the live model. The deterministic checks, confidence and "
+        "routing all run for real. Upload real photographs to run this claim "
+        "live.",
+        icon="🧪",
+    )
+elif uploaded and not result.gate_passed:
     # The gate runs before any photograph is read. Saying "your photos are
     # being measured" above a claim that never looked at them contradicts the
     # Photos: 0 metric directly beneath it.

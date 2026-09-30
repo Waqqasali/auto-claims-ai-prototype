@@ -95,6 +95,14 @@ what happened and where. In live mode it sets the scope of the photo check, so
 a wheel claim is judged on photos of the wheel, not on a walk-around of the
 whole vehicle, and requests stay limited to what the reported damage needs.
 
+Three claims have no real photographs: CLM-1003, CLM-1004 and CLM-1007 use
+synthetic test images. The model would correctly find no vehicle in them and
+escalate every one, which demonstrates nothing. So in live mode their images
+are never sent to the model; they keep their scripted assessment, labeled on
+screen, while the quality, metadata, reuse, ADAS, pricing, confidence and
+routing steps all run for real. Upload real photographs to one of them and it
+runs live like any other claim.
+
 If the API answers that the key "is not scoped to a workspace", the key can
 reach more than one workspace in your Claude Console organization. Either set
 `ANTHROPIC_WORKSPACE_ID` (it starts with `wrkspc_` and is listed at

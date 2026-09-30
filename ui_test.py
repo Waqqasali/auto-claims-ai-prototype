@@ -999,6 +999,57 @@ else:
     print("[ OK ] cache    one model call per photo set, across reruns and "
           "restarts; a changed prompt calls again")
 
+# --------------------------------------------------------------------------
+# In live mode, a claim whose only images are synthetic must never reach the
+# model (it would find no vehicle and escalate), and a claim with real
+# photographs must. Run in a separate process so VLM_PROVIDER is read fresh.
+# --------------------------------------------------------------------------
+
+import subprocess  # noqa: E402
+
+_probe = r"""
+import os, sys, tempfile
+os.environ["CLAIMS_RUNTIME_DIR"] = tempfile.mkdtemp()
+import providers.vlm_anthropic as m
+calls = []
+def _call(self, prompt, photos):
+    calls.append(1)
+    raise RuntimeError("live model called")
+m.AnthropicVLM._call = _call
+from streamlit.testing.v1 import AppTest
+out = []
+for cid in ("CLM-1003", "CLM-1001"):
+    # The first load opens on the default claim, which may call the model.
+    # Count only the calls made after switching to the claim under test.
+    at = AppTest.from_file("app.py", default_timeout=120).run()
+    at.sidebar.selectbox[0].set_value("CLM-1005").run()
+    calls.clear()
+    at.sidebar.selectbox[0].set_value(cid).run()
+    txt = " ".join(str(getattr(e, "value", "") or getattr(e, "body", ""))
+                   for e in list(at.info) + list(at.get("html")))
+    out.append(f"{cid}|{len(calls)}|{'Scripted assessment' in txt}|{'STARTING POINT' in txt}")
+print(";".join(out))
+"""
+_env = dict(os.environ, VLM_PROVIDER="anthropic",
+            ANTHROPIC_API_KEY="sk-ant-test-not-real")
+_res = subprocess.run([sys.executable, "-c", _probe], env=_env,
+                      capture_output=True, text=True, timeout=600)
+_line = [l for l in _res.stdout.splitlines() if l.startswith("CLM-")]
+_parts = dict((p.split("|")[0], p.split("|")[1:]) for p in _line[0].split(";")) if _line else {}
+if not _parts:
+    print(f"[FAIL] scripted: probe did not run: {_res.stderr[-400:]}")
+    fails += 1
+elif _parts["CLM-1003"] != ["0", "True", "True"]:
+    print(f"[FAIL] scripted: Camry in live mode {_parts['CLM-1003']} "
+          f"(calls, notice, starting point)")
+    fails += 1
+elif _parts["CLM-1001"][0] == "0":
+    print("[FAIL] scripted: real photographs did not reach the live model")
+    fails += 1
+else:
+    print("[ OK ] scripted synthetic-only claims stay scripted in live mode "
+          "(no model call, labeled); real photographs go live")
+
 # A good score must not be unconditional: bad files still fail the checks.
 _bad = _run.run("CLM-1002", ["samples/bad_blurry.jpg", "samples/bad_dark.jpg"],
                 attempt=2, user_photos=True)
