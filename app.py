@@ -44,7 +44,10 @@ st.set_page_config(
 st.html(
     """<style>
       [data-testid="stSidebar"] { width: 296px !important; }
-      .block-container { padding: 2rem 2.5rem 4rem; max-width: 1240px; }
+      /* Top padding must clear Streamlit's fixed header bar, which is 3.75rem
+         tall. At 2rem the claim heading slid underneath it and was clipped.
+         4.5rem is still tighter than the 6rem default. */
+      .block-container { padding: 4.5rem 2.5rem 4rem; max-width: 1240px; }
     </style>"""
 )
 
