@@ -79,7 +79,9 @@ REJECTION_REASONS = [
 SCENARIO_PHOTOS = {
     ("CLM-1001", 1): ["mazda6_front.jpg", "mazda6_corner.jpg", "mazda6_damage.jpg"],
     ("CLM-1002", 1): ["bad_blurry.jpg", "bad_dark.jpg", "bad_lowres.jpg"],
-    ("CLM-1002", 2): ["bad_blurry.jpg", "bad_dark.jpg"],
+    ("CLM-1002", 2): ["navigator_wheel_closeup.jpg",
+                      "navigator_wheel_angle.jpg",
+                      "navigator_wheel_context.jpg"],
     ("CLM-1003", 1): ["bumper_a.jpg", "bumper_b.jpg", "bumper_c.jpg"],
     ("CLM-1004", 1): ["stale_timestamp.jpg", "stale_timestamp_2.jpg"],
     ("CLM-1005", 1): ["good_a.jpg"],
@@ -129,9 +131,8 @@ with st.sidebar:
 
     attempt = st.radio(
         "Submission attempt", [1, 2], horizontal=True,
-        help="Attempt 2 is the resubmission. On CLM-1002 it is still "
-             "unusable, so the attempt cap is reached and a person takes over. "
-             "Upload your own photos to see the loop resolve instead.",
+        help="Attempt 2 is the resubmission. On CLM-1002 it answers the "
+             "three requested angles and the claim proceeds to an estimate.",
     )
 
     uploaded = st.file_uploader(

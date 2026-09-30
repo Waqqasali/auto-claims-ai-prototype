@@ -75,21 +75,21 @@ _SCRIPTS: dict[str, dict] = {
 
     "CLM-1002": {
         "coverage": {
-            "panels_visible": ["front_bumper"],
+            "panels_visible": ["left_rear_wheel"],
             "missing": [
-                "A photo of the front bumper from about 6 feet back, with the "
-                "entire bumper in frame",
-                "A photo of the left front corner showing where the bumper "
-                "meets the fender",
-                "A straight-on photo of the front of the vehicle",
+                "A straight-on photo of the damaged wheel with the whole rim "
+                "in frame",
+                "A photo of the tire sidewall alongside the damaged area",
+                "A photo from a few steps back showing which corner of the "
+                "vehicle the wheel is on",
             ],
             "unfixable": "",
             "coverage_score": 0.3,
-            "notes": "Only one usable angle; damage runs off the frame edge.",
+            "notes": "Only one usable angle; the rim runs off the frame edge.",
         },
         "damage": {
             "line_items": [],
-            "damage_panels": ["front_bumper"],
+            "damage_panels": ["left_rear_wheel"],
             "notes": "Not assessed — evidence insufficient.",
         },
     },
@@ -183,6 +183,53 @@ _GENERIC_COVERAGE = {
     "notes": "MOCK MODE: generic coverage response for an unscripted claim.",
 }
 
+# Scripts keyed on the submission as well as the claim. A re-request loop only
+# means something if a resubmission can resolve it, so CLM-1002's second attempt
+# assesses samples/navigator_wheel_*.jpg. This is the fallback for a demo that
+# cannot reach a live model; uploading the same photographs exercises the same
+# path against a model that has genuinely never seen them.
+_ATTEMPT_SCRIPTS: dict[tuple[str, int], dict] = {
+    ("CLM-1002", 2): {
+        "coverage": {
+            "panels_visible": ["left_rear_wheel"],
+            "missing": [],
+            "unfixable": "",
+            "coverage_score": 0.93,
+            "notes": "Resubmission answers all three requested angles: rim "
+                     "face, sidewall, and the wheel in context.",
+        },
+        "damage": {
+            "line_items": [
+                {
+                    "operation": "repair", "part": "left rear alloy wheel",
+                    "panel": "left_rear_wheel", "damage_type": "kerb damage",
+                    "severity": "moderate",
+                    "reasoning": "Gouging confined to the outer lip, through "
+                                 "the gloss black finish to bare alloy across "
+                                 "roughly a third of the circumference. No "
+                                 "flat-spotting or cracking visible at this "
+                                 "angle, so machine and recondition rather "
+                                 "than replace.",
+                    "confidence": 0.88,
+                },
+                {
+                    "operation": "refinish", "part": "left rear alloy wheel",
+                    "panel": "left_rear_wheel", "damage_type": "finish",
+                    "severity": "moderate",
+                    "reasoning": "Refinish to the factory gloss black once the "
+                                 "lip has been reconditioned.",
+                    "confidence": 0.90,
+                },
+            ],
+            "damage_panels": ["left_rear_wheel"],
+            "notes": "Cosmetic assessment only. Whether the rim is true, and "
+                     "whether the inner sidewall survived, cannot be "
+                     "established from photographs.",
+        },
+    },
+}
+
+
 _GENERIC_DAMAGE = {
     "line_items": [
         {
@@ -221,6 +268,9 @@ class MockVLM(VLMProvider):
         """
         if getattr(ctx, "user_supplied_photos", False):
             return None
+        key = (ctx.claim_id, getattr(ctx, "attempt", 1))
+        if key in _ATTEMPT_SCRIPTS:
+            return _ATTEMPT_SCRIPTS[key]
         return _SCRIPTS.get(ctx.claim_id)
 
     def assess_coverage(self, photos, ctx: ClaimContext, panel_vocabulary):

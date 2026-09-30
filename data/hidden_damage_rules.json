@@ -3,46 +3,184 @@
   "_why_this_matters": "Tractable concedes its AI has not reduced supplement amounts because it only assesses visually before teardown. Pre-teardown blindness is the hard information limit in this domain. This component does not remove it — it uses history to say what is usually behind the panel.",
   "patterns": {
     "front_bumper": [
-      {"part": "radiator support", "rationale": "Front impacts of this type frequently deform the support behind the bumper reinforcement."},
-      {"part": "headlamp mounting bracket", "rationale": "Brackets commonly crack even where the lamp lens itself is undamaged."},
-      {"part": "bumper absorber / reinforcement bar", "rationale": "Sits behind the cover and is not visible until the cover is removed."},
-      {"part": "washer fluid reservoir", "rationale": "Mounted in the front corner cavity on many platforms."}
+      {
+        "part": "radiator support",
+        "rationale": "Front impacts of this type frequently deform the support behind the bumper reinforcement."
+      },
+      {
+        "part": "headlamp mounting bracket",
+        "rationale": "Brackets commonly crack even where the lamp lens itself is undamaged."
+      },
+      {
+        "part": "bumper absorber / reinforcement bar",
+        "rationale": "Sits behind the cover and is not visible until the cover is removed."
+      },
+      {
+        "part": "washer fluid reservoir",
+        "rationale": "Mounted in the front corner cavity on many platforms."
+      }
     ],
     "front_grille": [
-      {"part": "radiator / condenser", "rationale": "Grille damage often accompanies cooling stack contact."},
-      {"part": "radar bracket alignment", "rationale": "Forward radar mounts behind the grille and may be displaced without visible damage."}
+      {
+        "part": "radiator / condenser",
+        "rationale": "Grille damage often accompanies cooling stack contact."
+      },
+      {
+        "part": "radar bracket alignment",
+        "rationale": "Forward radar mounts behind the grille and may be displaced without visible damage."
+      }
     ],
     "hood": [
-      {"part": "hood hinges", "rationale": "Hinge distortion is common and only apparent on alignment check."},
-      {"part": "hood latch / striker", "rationale": "Frequently bent in frontal impacts."}
+      {
+        "part": "hood hinges",
+        "rationale": "Hinge distortion is common and only apparent on alignment check."
+      },
+      {
+        "part": "hood latch / striker",
+        "rationale": "Frequently bent in frontal impacts."
+      }
     ],
     "rear_bumper": [
-      {"part": "trunk floor / rear body panel", "rationale": "Rear impacts transmit load through the bumper bar into the floor pan."},
-      {"part": "exhaust hanger", "rationale": "Commonly sheared in rear contact."},
-      {"part": "parking sensor wiring harness", "rationale": "Harness runs along the inside face of the bumper cover."}
+      {
+        "part": "trunk floor / rear body panel",
+        "rationale": "Rear impacts transmit load through the bumper bar into the floor pan."
+      },
+      {
+        "part": "exhaust hanger",
+        "rationale": "Commonly sheared in rear contact."
+      },
+      {
+        "part": "parking sensor wiring harness",
+        "rationale": "Harness runs along the inside face of the bumper cover."
+      }
     ],
     "left_quarter_panel": [
-      {"part": "wheelhouse inner", "rationale": "Quarter panel damage routinely extends to the inner structure."},
-      {"part": "fuel filler neck", "rationale": "Positioned inside the quarter on most platforms."}
+      {
+        "part": "wheelhouse inner",
+        "rationale": "Quarter panel damage routinely extends to the inner structure."
+      },
+      {
+        "part": "fuel filler neck",
+        "rationale": "Positioned inside the quarter on most platforms."
+      }
     ],
     "right_quarter_panel": [
-      {"part": "wheelhouse inner", "rationale": "Quarter panel damage routinely extends to the inner structure."}
+      {
+        "part": "wheelhouse inner",
+        "rationale": "Quarter panel damage routinely extends to the inner structure."
+      }
     ],
     "left_front_door": [
-      {"part": "door intrusion beam", "rationale": "Internal beam absorbs side impact and is not visible externally."},
-      {"part": "door wiring harness", "rationale": "Runs through the hinge pillar boot and is commonly pinched."}
+      {
+        "part": "door intrusion beam",
+        "rationale": "Internal beam absorbs side impact and is not visible externally."
+      },
+      {
+        "part": "door wiring harness",
+        "rationale": "Runs through the hinge pillar boot and is commonly pinched."
+      }
     ],
     "right_front_door": [
-      {"part": "door intrusion beam", "rationale": "Internal beam absorbs side impact and is not visible externally."},
-      {"part": "door wiring harness", "rationale": "Runs through the hinge pillar boot and is commonly pinched."}
+      {
+        "part": "door intrusion beam",
+        "rationale": "Internal beam absorbs side impact and is not visible externally."
+      },
+      {
+        "part": "door wiring harness",
+        "rationale": "Runs through the hinge pillar boot and is commonly pinched."
+      }
     ],
     "left_front_fender": [
-      {"part": "inner fender liner", "rationale": "Torn liners are routine and hidden behind the outer panel."},
-      {"part": "fender mounting flange", "rationale": "Deformation visible only once the panel is removed."}
+      {
+        "part": "inner fender liner",
+        "rationale": "Torn liners are routine and hidden behind the outer panel."
+      },
+      {
+        "part": "fender mounting flange",
+        "rationale": "Deformation visible only once the panel is removed."
+      }
     ],
     "right_front_fender": [
-      {"part": "inner fender liner", "rationale": "Torn liners are routine and hidden behind the outer panel."},
-      {"part": "fender mounting flange", "rationale": "Deformation visible only once the panel is removed."}
+      {
+        "part": "inner fender liner",
+        "rationale": "Torn liners are routine and hidden behind the outer panel."
+      },
+      {
+        "part": "fender mounting flange",
+        "rationale": "Deformation visible only once the panel is removed."
+      }
+    ],
+    "left_front_wheel": [
+      {
+        "part": "wheel rim inboard face",
+        "rationale": "A strike hard enough to gouge the outer lip can bend or crack the inboard flange, which is not visible with the wheel fitted."
+      },
+      {
+        "part": "tire inner sidewall and bead",
+        "rationale": "The inner sidewall takes the pinch against the rim and cannot be inspected until the tire is dismounted."
+      },
+      {
+        "part": "suspension alignment",
+        "rationale": "Kerb impacts commonly disturb camber and toe. Only a rack measurement settles it."
+      },
+      {
+        "part": "tire pressure monitoring sensor",
+        "rationale": "Mounted to the rim at the valve and damaged by impacts in that area."
+      }
+    ],
+    "right_front_wheel": [
+      {
+        "part": "wheel rim inboard face",
+        "rationale": "A strike hard enough to gouge the outer lip can bend or crack the inboard flange, which is not visible with the wheel fitted."
+      },
+      {
+        "part": "tire inner sidewall and bead",
+        "rationale": "The inner sidewall takes the pinch against the rim and cannot be inspected until the tire is dismounted."
+      },
+      {
+        "part": "suspension alignment",
+        "rationale": "Kerb impacts commonly disturb camber and toe. Only a rack measurement settles it."
+      },
+      {
+        "part": "tire pressure monitoring sensor",
+        "rationale": "Mounted to the rim at the valve and damaged by impacts in that area."
+      }
+    ],
+    "left_rear_wheel": [
+      {
+        "part": "wheel rim inboard face",
+        "rationale": "A strike hard enough to gouge the outer lip can bend or crack the inboard flange, which is not visible with the wheel fitted."
+      },
+      {
+        "part": "tire inner sidewall and bead",
+        "rationale": "The inner sidewall takes the pinch against the rim and cannot be inspected until the tire is dismounted."
+      },
+      {
+        "part": "suspension alignment",
+        "rationale": "Kerb impacts commonly disturb camber and toe. Only a rack measurement settles it."
+      },
+      {
+        "part": "tire pressure monitoring sensor",
+        "rationale": "Mounted to the rim at the valve and damaged by impacts in that area."
+      }
+    ],
+    "right_rear_wheel": [
+      {
+        "part": "wheel rim inboard face",
+        "rationale": "A strike hard enough to gouge the outer lip can bend or crack the inboard flange, which is not visible with the wheel fitted."
+      },
+      {
+        "part": "tire inner sidewall and bead",
+        "rationale": "The inner sidewall takes the pinch against the rim and cannot be inspected until the tire is dismounted."
+      },
+      {
+        "part": "suspension alignment",
+        "rationale": "Kerb impacts commonly disturb camber and toe. Only a rack measurement settles it."
+      },
+      {
+        "part": "tire pressure monitoring sensor",
+        "rationale": "Mounted to the rim at the valve and damaged by impacts in that area."
+      }
     ]
   }
 }
