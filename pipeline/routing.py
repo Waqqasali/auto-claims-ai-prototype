@@ -37,10 +37,18 @@ def decide(
         reasons.append(
             f"Calibration risk on {len(adas_hits)} panel(s) carrying sensors."
         )
-    if authenticity_flags:
+    from pipeline.authenticity import STRONG, flag_strength
+    strong_flags = [f for f in authenticity_flags if flag_strength(f) == STRONG]
+    if strong_flags:
         reasons.append(
-            f"{len(authenticity_flags)} distinct media authenticity concern(s) "
-            f"across the photos — routed for review, not denied."
+            f"{len(strong_flags)} strong media authenticity concern(s) — routed "
+            f"for review, not denied."
+        )
+    elif authenticity_flags:
+        reasons.append(
+            f"{len(authenticity_flags)} minor media authenticity note(s), such "
+            f"as missing photo metadata. Shown to the reviewer; not a bar to "
+            f"verification."
         )
     if assessment.hidden_damage:
         reasons.append(
@@ -62,7 +70,8 @@ def decide(
             f"stage does not recognize, or the price catalog has a gap."
         )
 
-    if score >= TIER_VERIFY_MIN and not authenticity_flags:
+    # Only a strong authenticity signal bars verify. See authenticity.py.
+    if score >= TIER_VERIFY_MIN and not strong_flags:
         tier = "verify"
         headline = "Draft estimate ready for verification"
         reasons.insert(

@@ -26,7 +26,7 @@ import streamlit as st
 
 from config import (
     ADAS_CONFIDENCE_PENALTY,
-    AUTHENTICITY_FLAG_PENALTY,
+    AUTHENTICITY_PENALTY,
     MAX_REQUEST_ATTEMPTS,
     OVERRIDE_LOG,
     PHASH_LEDGER,
@@ -211,7 +211,12 @@ HELP_PENALTIES = (
     "Penalties are fixed subtractions applied after the signals are combined, "
     "not signals averaged in with them.\n\n"
     f"ADAS calibration zone touched: −{ADAS_CONFIDENCE_PENALTY:.2f}\n\n"
-    f"Media authenticity flag raised: −{AUTHENTICITY_FLAG_PENALTY:.2f}\n\n"
+    "Media authenticity, scaled to the strongest flag on the claim: "
+    f"strong −{AUTHENTICITY_PENALTY['strong']:.2f} (the same photo on another "
+    f"claim, or taken before the loss), moderate "
+    f"−{AUTHENTICITY_PENALTY['moderate']:.2f} (editing software, taken long "
+    f"after the loss), weak −{AUTHENTICITY_PENALTY['weak']:.2f} (no photo "
+    f"metadata). Only a strong flag bars the verify tier.\n\n"
     "Hidden damage candidates: no penalty in this build. The signal fires on "
     "nearly every claim, and weighting it without observed rates from a real "
     "claims corpus would be inventing evidence."
@@ -266,6 +271,12 @@ with st.sidebar:
     scenario = dict(claims).get(claim_id, "")
     if scenario:
         st.info(scenario, icon="🎬")
+        if VLM_PROVIDER == "anthropic":
+            # The scenario's "Expect:" is the scripted mock result. In live mode
+            # the model writes its own line items, so the tier can differ.
+            st.caption("Live mode: the model reads the photographs and writes "
+                       "its own line items, so the result can differ from the "
+                       "expectation above.")
 
     attempt = st.radio(
         "Submission attempt", [1, 2], horizontal=True,
@@ -454,10 +465,22 @@ if not paths:
 # all said it did. Same-claim matches are skipped, so re-rendering a claim
 # never flags its own photographs.
 try:
-    result = run.run(
-        claim_id, paths, attempt=attempt, record_hashes=True,
-        user_photos=bool(uploaded) or using_sample,
-    )
+    # Live answers are cached per photo set, so only the first look at a claim
+    # waits on the model. Say so while it happens, rather than showing a
+    # frozen page.
+    if VLM_PROVIDER == "anthropic":
+        with st.spinner("The model is reading the photographs. The first look "
+                        "at a claim takes about 10 to 20 seconds; after that "
+                        "it is instant."):
+            result = run.run(
+                claim_id, paths, attempt=attempt, record_hashes=True,
+                user_photos=bool(uploaded) or using_sample,
+            )
+    else:
+        result = run.run(
+            claim_id, paths, attempt=attempt, record_hashes=True,
+            user_photos=bool(uploaded) or using_sample,
+        )
 except Exception as exc:
     # In live mode this is usually the vision API: a timeout, a rate limit, a
     # response that is not the JSON asked for. A presenter needs a sentence

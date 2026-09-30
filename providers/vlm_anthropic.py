@@ -14,12 +14,54 @@ import json
 import mimetypes
 import os
 
-from config import ANTHROPIC_MODEL
+import hashlib
+
+from config import ANTHROPIC_MODEL, RUNTIME_DIR
 from pipeline.models import ClaimContext, Photo
 from providers.vlm_base import VLMProvider
 
 _MAX_IMAGES = 8          # keep payloads sane
 _MAX_EDGE = 1568         # Anthropic downsizes above this anyway
+
+
+_MEMO: dict[str, dict] = {}
+
+
+def _cache_dir() -> str:
+    return os.path.join(RUNTIME_DIR, "vlm_cache")
+
+
+def _cache_key(prompt: str, photos: list[Photo]) -> str:
+    h = hashlib.sha256()
+    h.update(ANTHROPIC_MODEL.encode("utf-8"))
+    h.update(prompt.encode("utf-8"))
+    for p in photos:
+        with open(p.path, "rb") as fh:
+            h.update(hashlib.sha256(fh.read()).digest())
+    return h.hexdigest()
+
+
+def _cache_get(key: str) -> dict | None:
+    if key in _MEMO:
+        return json.loads(json.dumps(_MEMO[key]))       # a copy, never shared
+    path = os.path.join(_cache_dir(), f"{key}.json")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            _MEMO[key] = json.load(fh)
+        return json.loads(json.dumps(_MEMO[key]))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def _cache_put(key: str, value: dict) -> None:
+    _MEMO[key] = json.loads(json.dumps(value))
+    try:
+        os.makedirs(_cache_dir(), exist_ok=True)
+        with open(os.path.join(_cache_dir(), f"{key}.json"), "w",
+                  encoding="utf-8") as fh:
+            json.dump(value, fh)
+    except OSError:
+        pass                                            # memory cache still holds
 
 
 def _encode(path: str) -> dict | None:
@@ -151,6 +193,19 @@ class AnthropicVLM(VLMProvider):
     # -- internals ---------------------------------------------------------
 
     def _call(self, prompt: str, photos: list[Photo]) -> dict:
+        # Streamlit reruns the whole script on every click, so without this a
+        # claim was re-assessed by the model each time a reviewer touched a
+        # widget: about 20 seconds per click, paid for each time, and free to
+        # come back with different line items halfway through an edit. The
+        # answer is cached on exactly what the model was shown (model, prompt,
+        # photo bytes), in memory and on disk, so a claim is assessed once per
+        # photo set and a restart does not repeat it. Change the prompt, the
+        # model or a photo and the key changes with it.
+        key = _cache_key(prompt, photos[:_MAX_IMAGES])
+        cached = _cache_get(key)
+        if cached is not None:
+            return cached
+
         blocks: list[dict] = []
         for p in photos[:_MAX_IMAGES]:
             enc = _encode(p.path)
@@ -174,7 +229,9 @@ class AnthropicVLM(VLMProvider):
         text = text.strip()
 
         try:
-            return json.loads(text)
+            out = json.loads(text)
+            _cache_put(key, out)
+            return out
         except json.JSONDecodeError as exc:
             raise RuntimeError(
                 f"Model did not return parseable JSON. First 300 chars:\n{text[:300]}"

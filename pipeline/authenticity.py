@@ -85,6 +85,29 @@ def _save_ledger(ledger: dict) -> None:
         json.dump(ledger, fh, indent=2)
 
 
+# How much each signal should move the score. Only a STRONG signal (the same
+# photo on another claim, or a photo taken before the loss) bars the verify
+# tier. Missing EXIF is WEAK: it is the ordinary state of a photo that went
+# through a messaging app, and treating it as suspicious would make most real
+# claims unverifiable. Anything not listed here is MODERATE by default, and a
+# test checks that every message this module writes is classified on purpose.
+STRONG, MODERATE, WEAK = "strong", "moderate", "weak"
+_STRENGTH_BY_PREFIX = (
+    ("Visually near-identical", STRONG),
+    ("Capture time predates", STRONG),
+    ("Metadata names editing software", MODERATE),
+    ("Capture time is", MODERATE),
+    ("No EXIF metadata", WEAK),
+)
+
+
+def flag_strength(flag: str) -> str:
+    for prefix, strength in _STRENGTH_BY_PREFIX:
+        if flag.startswith(prefix):
+            return strength
+    return MODERATE
+
+
 def screen(photo: Photo, ctx: ClaimContext, record_hash: bool = True) -> Photo:
     """Annotate one photo with authenticity flags. Mutates and returns it."""
     flags: list[str] = []

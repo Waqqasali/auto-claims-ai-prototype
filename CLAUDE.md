@@ -27,6 +27,11 @@ python ui_test.py           # the Streamlit script itself, about 40 checks
 Live vision calls: copy `.env.example` to `.env`, set `VLM_PROVIDER=anthropic`
 and `ANTHROPIC_API_KEY`. Never print, log or commit the key.
 
+Live model answers are cached in `runtime/vlm_cache/`, keyed on the model,
+the prompt and the photo bytes, so a claim is assessed once per photo set.
+Delete that folder to force fresh calls. Changing a prompt invalidates the
+cache for it automatically.
+
 Both suites must pass before any commit. After changing `app.py`, also run the
 app and look at every screen the change touches; several past defects were
 visible on screen and invisible to the tests.

@@ -85,6 +85,11 @@ streamlit run app.py
 Or copy `.env.example` to `.env` and fill in the key there. Both routes work;
 neither is required.
 
+Live answers are cached per photo set in `runtime/vlm_cache/`, so the first
+look at a claim takes 10 to 20 seconds and every click after that is instant,
+and the line items cannot change under a reviewer mid-edit. Delete that folder
+to force fresh calls.
+
 Each claim carries the policyholder's own report from first notice of loss:
 what happened and where. In live mode it sets the scope of the photo check, so
 a wheel claim is judged on photos of the wheel, not on a walk-around of the

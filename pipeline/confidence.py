@@ -33,7 +33,7 @@ module deliberately does not pretend otherwise.
 
 from config import (
     ADAS_CONFIDENCE_PENALTY,
-    AUTHENTICITY_FLAG_PENALTY,
+    AUTHENTICITY_PENALTY,
     W_CROSS_STAGE_AGREEMENT,
     W_EVIDENCE_COVERAGE,
     W_LINE_ITEM_FLOOR,
@@ -155,12 +155,16 @@ def compute(
     # --- Authenticity -----------------------------------------------------
     authenticity_penalty = 0.0
     if authenticity_flags:
-        authenticity_penalty = AUTHENTICITY_FLAG_PENALTY
-        score -= AUTHENTICITY_FLAG_PENALTY
+        from pipeline.authenticity import flag_strength
+        strongest = max((flag_strength(f) for f in authenticity_flags),
+                        key=lambda s: AUTHENTICITY_PENALTY[s])
+        authenticity_penalty = AUTHENTICITY_PENALTY[strongest]
+        score -= authenticity_penalty
         explanation.append(
-            f"Authenticity penalty -{AUTHENTICITY_FLAG_PENALTY:.2f}: "
-            f"{len(authenticity_flags)} media flag(s) raised. This reduces "
-            f"confidence and routes for review. It never denies a claim."
+            f"Authenticity penalty -{authenticity_penalty:.2f}: "
+            f"{len(authenticity_flags)} media flag(s), the strongest {strongest}. "
+            f"Scaled to the strongest signal, not the count. It never denies "
+            f"a claim."
         )
 
     score = max(0.0, min(1.0, score))

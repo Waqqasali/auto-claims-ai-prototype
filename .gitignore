@@ -12,9 +12,10 @@ env/
 
 # Runtime state. The directory is tracked via .gitkeep so a fresh clone has
 # somewhere to write; its contents are per-run and must not be committed.
-runtime/uploads/
-runtime/overrides.jsonl
-runtime/phash_ledger.json
+# Everything under runtime/ except the placeholder: uploads, the override log,
+# the reuse ledger and the cache of live model answers.
+runtime/*
+!runtime/.gitkeep
 
 # Editors and operating systems
 .vscode/

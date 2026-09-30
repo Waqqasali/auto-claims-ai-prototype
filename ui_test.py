@@ -899,6 +899,106 @@ else:
     print("[ OK ] report   every claim has a policyholder report; it scopes "
           "both live prompts and is shown on screen")
 
+# --------------------------------------------------------------------------
+# Authenticity signals are graded. Every message the screen can write must be
+# classified on purpose; missing EXIF alone must not stop a claim verifying;
+# a strong signal must.
+# --------------------------------------------------------------------------
+
+from pipeline import authenticity as _auth  # noqa: E402
+
+_gdir = _tf.mkdtemp(prefix="claims-auth-")
+
+
+def _shot(name, exif=None, fmt="JPEG"):
+    path = os.path.join(_gdir, name)
+    im = _Image.open("samples/navigator_wheel_closeup.jpg").convert("RGB")
+    if exif is None:
+        im.save(path, format=fmt)
+    else:
+        im.save(path, format=fmt, exif=exif)
+    return path
+
+
+def _exif(original=None, software=None):
+    ex = _Image.Exif()
+    ex[271], ex[272] = "Apple", "iPhone 15"
+    if software:
+        ex[305] = software
+    if original:
+        ex.get_ifd(0x8769)[36867] = original
+    return ex
+
+
+_cases = {
+    "no metadata": (_shot("plain.png", None, "PNG"), _auth.WEAK),
+    "edited":      (_shot("edited.jpg", _exif("2026:09:21 09:00:00", "Adobe Photoshop 25.0")), _auth.MODERATE),
+    "late":        (_shot("late.jpg", _exif("2026:10:10 09:00:00")), _auth.MODERATE),
+    "before loss": (_shot("early.jpg", _exif("2026:09:01 09:00:00")), _auth.STRONG),
+}
+_wrong = []
+for _label, (_path, _want) in _cases.items():
+    _r = _run.run("CLM-1002", [_path], attempt=2, user_photos=True, record_hashes=False)
+    _fl = [f for p in _r.photos for f in p.authenticity_flags]
+    if not _fl or _auth.flag_strength(_fl[0]) != _want:
+        _wrong.append((_label, [(_auth.flag_strength(f), f[:40]) for f in _fl]))
+
+# Missing EXIF on three good photos: a small penalty, and still verify.
+_plain3 = [_shot(f"plain_{n}.png", None, "PNG") for n in ("a", "b", "c")]
+for _i, _n in enumerate(("closeup", "angle", "context")):
+    _Image.open(f"samples/navigator_wheel_{_n}.jpg").convert("RGB").save(_plain3[_i], format="PNG")
+_pr = _run.run("CLM-1002", _plain3, attempt=2, user_photos=True, record_hashes=False)
+
+if _wrong:
+    print(f"[FAIL] grading: misclassified {_wrong}")
+    fails += 1
+elif _pr.confidence.authenticity_penalty != _cfg.AUTHENTICITY_PENALTY["weak"]:
+    print(f"[FAIL] grading: missing EXIF cost {_pr.confidence.authenticity_penalty}")
+    fails += 1
+elif _pr.decision.tier != "verify":
+    print(f"[FAIL] grading: missing EXIF alone kept the claim at {_pr.decision.tier}")
+    fails += 1
+else:
+    print(f"[ OK ] grading  no EXIF weak (-{_cfg.AUTHENTICITY_PENALTY['weak']:.2f}, "
+          f"still verifies at {_pr.confidence.claim_confidence:.2f}); editing "
+          f"and late moderate; before the loss strong")
+
+# --------------------------------------------------------------------------
+# Live answers are cached on what the model was shown. A rerun must not call
+# the model again, a restart must not either, and a changed prompt must.
+# --------------------------------------------------------------------------
+
+os.environ.setdefault("ANTHROPIC_API_KEY", "sk-ant-test-not-real")
+_calls = [0]
+
+
+class _Block:
+    type, text = "text", '{"line_items": [], "damage_panels": [], "notes": ""}'
+
+
+class _Msgs:
+    def create(self, **kw):
+        _calls[0] += 1
+        return type("R", (), {"content": [_Block()]})()
+
+
+_vlm = _live.AnthropicVLM()
+_vlm.client = type("C", (), {"messages": _Msgs()})()
+_ph = [type("P", (), {"path": f"samples/mazda6_{n}.jpg"})() for n in ("front", "damage")]
+_vlm._call("prompt one", _ph)
+_vlm._call("prompt one", _ph)                  # a rerun
+_live._MEMO.clear()
+_vlm._call("prompt one", _ph)                  # a restart: memory gone, disk remains
+_after_restart = _calls[0]
+_vlm._call("prompt two", _ph)                  # a changed prompt
+if (_after_restart, _calls[0]) != (1, 2):
+    print(f"[FAIL] cache: model calls were {_after_restart} then {_calls[0]}, "
+          f"expected 1 then 2")
+    fails += 1
+else:
+    print("[ OK ] cache    one model call per photo set, across reruns and "
+          "restarts; a changed prompt calls again")
+
 # A good score must not be unconditional: bad files still fail the checks.
 _bad = _run.run("CLM-1002", ["samples/bad_blurry.jpg", "samples/bad_dark.jpg"],
                 attempt=2, user_photos=True)
