@@ -251,6 +251,7 @@ with st.sidebar:
             "Nothing records without a reason code."
         )
         st.caption(
+            "Numbers are for mock mode; live mode reads the photos and varies. "
             "Then try to break it: a blurry photo, a screenshot, a file that is "
             "not an image, or the same photo on two claims. In mock mode the "
             "line items are scripted. Loss dates are in September 2026, so a "

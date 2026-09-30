@@ -19,7 +19,9 @@ confidence score that drives routing.
 
 ## Try it in five minutes
 
-Pick claims from the sidebar. Each step says what you should see.
+Pick claims from the sidebar. Each step says what you should see in the
+default mock mode. With live vision calls the model reads the photographs,
+so the line items and scores will differ.
 
 1. **A clean claim.** Open CLM-1001 (Mazda 6, real photographs). It routes to
    **Verify** at 0.94. Open "Why the model proposed each line", then hover the
