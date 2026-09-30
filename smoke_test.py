@@ -1,4 +1,4 @@
-"""End-to-end smoke test across all six demo claims. Mock provider, no key."""
+"""End-to-end smoke test across all seven demo claims. Mock provider, no key."""
 import glob, os, sys
 from pipeline import run, routing
 
@@ -6,13 +6,14 @@ S = os.path.join(os.path.dirname(os.path.abspath(__file__)), "samples")
 def s(*names): return [os.path.join(S, n) for n in names]
 
 CASES = [
-    ("CLM-1001", s("good_a.jpg", "good_b.jpg", "good_c.jpg"), 1),
+    ("CLM-1001", s("mazda6_front.jpg", "mazda6_corner.jpg", "mazda6_damage.jpg"), 1),
     ("CLM-1002", s("bad_blurry.jpg", "bad_dark.jpg", "bad_lowres.jpg"), 1),
     ("CLM-1002", s("bad_blurry.jpg", "bad_dark.jpg"), 2),   # attempt cap
     ("CLM-1003", s("bumper_a.jpg", "bumper_b.jpg", "bumper_c.jpg"), 1),
     ("CLM-1004", s("stale_timestamp.jpg", "stale_timestamp_2.jpg"), 1),
     ("CLM-1005", s("good_a.jpg"), 1),
     ("CLM-1006", s("good_a.jpg"), 1),
+    ("CLM-1007", s("sideswipe_a.jpg", "sideswipe_b.jpg", "sideswipe_c.jpg"), 1),
 ]
 
 fails = 0

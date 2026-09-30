@@ -1,5 +1,5 @@
 {
-  "_comment": "STUBBED pricing source. In production this is a live integration with a parts and labour pricing database or the carrier's negotiated vendor price lists. Flat rates below are indicative only and carry no regional, vehicle-specific or DRP-negotiated variation. This stub is isolated behind pricing.lookup() so the real integration replaces one function.",
+  "_comment": "STUBBED pricing source. In production this is a live integration with a parts and labor pricing database or the carrier's negotiated vendor price lists. Flat rates below are indicative only and carry no regional, vehicle-specific or DRP-negotiated variation. This stub is isolated behind pricing.lookup() so the real integration replaces one function.",
   "labour_rate_per_hour": 68.0,
   "paint_rate_per_hour": 62.0,
   "operations": {

@@ -49,9 +49,17 @@ def decide(
         )
     unpriced = [li for li in assessment.line_items if not li.priced]
     if unpriced:
+        # Two causes produce an unpriced line, and the reviewer should not be
+        # told it is always the first. Either the assessment named an
+        # operation the costing stage does not recognize, or the catalogue has
+        # a gap. Against a complete production catalogue the first dominates;
+        # against this stub the second is more likely (CLM-1007's rocker panel
+        # is a catalogue gap, not a model error). Both leave the total
+        # incomplete, which is what the reviewer needs to act on.
         reasons.append(
-            f"{len(unpriced)} line item(s) could not be priced, which suggests "
-            f"the assessment produced something outside the expected vocabulary."
+            f"{len(unpriced)} line item(s) could not be priced, so the total is "
+            f"incomplete. Either the assessment named something the costing "
+            f"stage does not recognize, or the price catalogue has a gap."
         )
 
     if score >= TIER_VERIFY_MIN and not authenticity_flags:
@@ -100,7 +108,7 @@ TIER_LABELS = {
 
 TIER_GUIDANCE = {
     "verify": "Line items look well supported. Check them rather than rebuilding.",
-    "starting_point": "Usable as a base, but the risks below need your judgement.",
+    "starting_point": "Usable as a base, but the risks below need your judgment.",
     "low_confidence": "Treat the figures as unreliable. The line item list may "
                       "still save you typing.",
     "re_request": "A specific, actionable request has been issued to the "

@@ -55,13 +55,13 @@ in mock mode you get a generic line item set instead. Run with
 
 WEBP and HEIC usually arrive with EXIF stripped by the re-encode. That is not
 silently ignored: it raises an authenticity flag and lowers confidence, which is
-the intended behaviour and easy to demonstrate by uploading the same photo as a
+the intended behavior and easy to demonstrate by uploading the same photo as a
 JPG and then as a WEBP.
 
 ### Run the tests
 
 ```bash
-python smoke_test.py    # pipeline, all six claims, no UI
+python smoke_test.py    # pipeline, all seven claims, no UI
 python ui_test.py       # exercises the Streamlit script for every scenario
 ```
 
@@ -69,17 +69,18 @@ python ui_test.py       # exercises the Streamlit script for every scenario
 
 ## What to look at
 
-Six claims are pre-loaded. Pick them from the sidebar.
+Seven claims are pre-loaded, and between them every routing tier is reachable. Pick them from the sidebar.
 
 | Claim | Scenario | Expected outcome |
 |---|---|---|
-| **CLM-1001** | 2021 Mazda 6, front corner damage. **Real photographs.** Damaged panels carry no sensors on this vehicle | `VERIFY` at 0.92, three line items |
-| **CLM-1002** attempt 1 | 2020 Lincoln Navigator, kerbed alloy wheel. Blurry, dark and low-resolution photos | `MORE PHOTOS NEEDED` — three specific angles requested |
+| **CLM-1001** | 2021 Mazda 6, front corner damage. **Real photographs.** Damaged panels carry no sensors on this vehicle | `VERIFY` at 0.94, three line items. The blend line is the weakest but is excluded from the floor, because it paints an undamaged panel |
+| **CLM-1002** attempt 1 | 2020 Lincoln Navigator, curbed alloy wheel. Blurry, dark and low-resolution photos | `MORE PHOTOS NEEDED` — three specific angles requested |
 | **CLM-1002** attempt 2 | Awaiting the resubmission. Upload `samples/navigator_wheel_*.jpg` | Assessment, estimate, and four risks the photos cannot resolve |
 | **CLM-1003** | 2021 Toyota Camry, rear bumper scuff | `STARTING POINT` at 0.60 |
 | **CLM-1004** | Photo EXIF timestamp predates the reported loss | `STARTING POINT`, authenticity flag raised, **not denied** |
 | **CLM-1005** | Bodily injury reported | `NOT PROCESSED` |
 | **CLM-1006** | Policy not in force at loss date | `NOT PROCESSED` |
+| **CLM-1007** | 2022 Honda CR-V, side-swipe from the rear door into the rocker and rear bumper corner. Good photographs, uncertain damage | `LOW CONFIDENCE` at 0.38. Already only a starting point (0.63) before the blind spot radar penalty. The only claim where retrieval density and cross-stage agreement fall below 1.00; the rocker line cannot be priced |
 
 ### Resolving the re-request loop
 
@@ -94,7 +95,7 @@ proceeds.
 
 It is the clearest case in the set for what this product is actually about.
 The visible damage is cosmetic and the system is confident about it. But
-a kerb strike hard enough to gouge the lip may also have bent the inboard
+a curb strike hard enough to gouge the lip may also have bent the inboard
 flange, pinched the inner sidewall, disturbed the alignment or killed the TPMS
 sensor, and **none of that is visible in a photograph**. So the estimate comes
 with those four risks named rather than priced. Charging for them on suspicion
@@ -111,7 +112,7 @@ trivially automatable. The system declines to treat it that way, because the
 rear bumper on that vehicle carries parking sensors and rear cross-traffic
 radar. Whether recalibration is required **cannot be established from a
 photograph**, so confidence takes a 0.25 penalty and the claim routes for
-human judgement.
+human judgment.
 
 The R&I line for the parking sensors carries 0.71 confidence, the lowest in
 the claim. Because claim confidence is anchored on the weakest line rather

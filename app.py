@@ -91,6 +91,7 @@ SCENARIO_PHOTOS = {
     ("CLM-1004", 1): ["stale_timestamp.jpg", "stale_timestamp_2.jpg"],
     ("CLM-1005", 1): ["good_a.jpg"],
     ("CLM-1006", 1): ["good_a.jpg"],
+    ("CLM-1007", 1): ["sideswipe_a.jpg", "sideswipe_b.jpg", "sideswipe_c.jpg"],
 }
 
 
@@ -106,7 +107,7 @@ def photos_for(claim_id: str, attempt: int) -> list[str]:
         return SCENARIO_PHOTOS[key]
     return SCENARIO_PHOTOS.get((claim_id, 1), [])
 
-# (accent, tint) per routing tier. The dot and the rule carry the colour; the
+# (accent, tint) per routing tier. The dot and the rule carry the color; the
 # pill carries the tint; badge text stays ink so the tier reads as a label
 # rather than as an alarm.
 TIER_STYLE = {
@@ -119,7 +120,7 @@ TIER_STYLE = {
 }
 
 INK, MUTED, BORDER = "#0D1B2A", "#4A6580", "#DEE5EE"
-CONFIDENCE_BAR = "#4A6580"   # magnitude, never judgement. Not the orange accent.
+CONFIDENCE_BAR = "#4A6580"   # magnitude, never judgment. Not the orange accent.
 
 
 # --------------------------------------------------------------------------
@@ -148,7 +149,7 @@ HELP_LINE_ITEM_FLOOR = (
     "item that generates the supplement.\n\n"
     "Blend lines are excluded. A blend is paint applied to an adjacent "
     "undamaged panel so the refinished panel beside it does not show a hard "
-    "edge, so its confidence is a judgement about colour match rather than "
+    "edge, so its confidence is a judgment about color match rather than "
     "about the damage."
 )
 
@@ -167,15 +168,21 @@ HELP_RETRIEVAL_DENSITY = (
     "comparables mean the estimate is an extrapolation and should be treated "
     "as one.\n\n"
     "Stubbed in this build: the comparables corpus is not connected, so this "
-    "reads 1.00 wherever the price table has an entry."
+    "is approximated as the share of damaged panels that appear in the hidden "
+    "damage rules table. Blend lines are left out, because a blend names an "
+    "undamaged panel."
 )
 
 HELP_CROSS_STAGE_AGREEMENT = (
     "Whether the line items the damage stage identified map cleanly onto "
     "priceable operations in the costing stage.\n\n"
-    "An item that cannot be priced is two stages disagreeing about what the "
-    "damage is, which is a stronger warning than either stage reporting low "
-    "confidence on its own."
+    "An item that cannot be priced has two possible causes. The damage stage "
+    "may have named something the costing stage does not recognize, which is "
+    "a stronger warning than either stage reporting low confidence on its "
+    "own. Or the price catalogue has a gap. Either way the total is "
+    "incomplete.\n\n"
+    "Against a complete production catalogue the first cause dominates. "
+    "Against the stub catalogue in this build, gaps are more likely."
 )
 
 HELP_PENALTIES = (
@@ -587,6 +594,19 @@ st.caption(
     f"Total \\${assessment.estimate_total:,.2f} before deductible "
     f"(\\${ctx.deductible:,.0f}). Pricing is stubbed — treat totals as illustrative."
 )
+
+# A line the costing stage could not price counts as zero in the total. Saying
+# nothing would present an incomplete total as a complete one, which is the
+# kind of quiet understatement that becomes a supplement.
+_unpriced = [li for li in assessment.line_items if not li.priced]
+if _unpriced:
+    st.warning(
+        f"**The total excludes {len(_unpriced)} line(s) the costing stage "
+        f"could not price:** "
+        + "; ".join(f"{li.operation} {li.part}" for li in _unpriced)
+        + ". The real total is higher by an amount this system cannot state.",
+        icon="💲",
+    )
 
 original = pd.DataFrame(
     [

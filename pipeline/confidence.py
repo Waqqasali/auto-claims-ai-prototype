@@ -58,7 +58,7 @@ def compute(
     #
     # A 'blend' names an ADJACENT UNDAMAGED panel that gets paint only so the
     # refinished panel next to it does not show a hard edge. Its confidence is
-    # a judgement about colour match, not about the damage.
+    # a judgment about color match, not about the damage.
     #
     # Left in, it routinely becomes the weakest line and sets the confidence
     # for the whole claim. On CLM-1001 the blend sits at 0.86 and carries
@@ -87,8 +87,8 @@ def compute(
         excluded = len(assessment.line_items) - len(scoring_items)
         note = (
             f" {excluded} blend line(s) excluded: a blend is paint on an "
-            f"undamaged panel for colour match, so its confidence is not a "
-            f"judgement about the damage."
+            f"undamaged panel for color match, so its confidence is not a "
+            f"judgment about the damage."
             if excluded else ""
         )
         explanation.append(

@@ -15,7 +15,8 @@ from streamlit.testing.v1 import AppTest
 # CLM-1002 attempt 2 is deliberately absent: it is a claim awaiting evidence,
 # so it has no routing tier. It has its own assertion further down.
 CASES = [("CLM-1001", 1), ("CLM-1002", 1), ("CLM-1003", 1),
-         ("CLM-1004", 1), ("CLM-1005", 1), ("CLM-1006", 1)]
+         ("CLM-1004", 1), ("CLM-1005", 1), ("CLM-1006", 1),
+         ("CLM-1007", 1)]
 TIERS = ["VERIFY", "STARTING POINT", "LOW CONFIDENCE", "MORE PHOTOS NEEDED",
          "ESCALATED TO AGENT", "NOT PROCESSED"]
 
@@ -305,7 +306,7 @@ else:
           f"anchored {min(_sig):.2f}, both verify")
 
 # --------------------------------------------------------------------------
-# A blend is paint on an UNDAMAGED adjacent panel for colour match, so it must
+# A blend is paint on an UNDAMAGED adjacent panel for color match, so it must
 # never set the claim's confidence. CLM-1001 is the case that proves it: its
 # blend line is the lowest-confidence line in the estimate and the cheapest.
 # --------------------------------------------------------------------------
@@ -379,6 +380,7 @@ _CLAIM_OF = {
     "stale_timestamp.jpg": "CLM-1004",
     "stale_timestamp_2.jpg": "CLM-1004",
     **{f"good_{a}.jpg": "shared" for a in "abc"},
+    **{f"sideswipe_{a}.jpg": "CLM-1007" for a in "abc"},
 }
 
 _samples = sorted(f for f in os.listdir("samples") if f.endswith(".jpg"))
@@ -440,6 +442,49 @@ elif _cb.authenticity_penalty:
 else:
     print(f"[ OK ] camry    {_cb.claim_confidence:.2f} starting point, "
           f"ADAS penalty only, matching the PRD")
+
+
+# --------------------------------------------------------------------------
+# CLM-1007 is the only claim that demonstrates the low confidence tier, and
+# the only one where retrieval density and cross-stage agreement fall below
+# 1.00. Each of those is pinned, because the claim exists to show them.
+# It must also get there honestly: no authenticity penalty, and a base score
+# that is already only a starting point before the ADAS penalty applies.
+# --------------------------------------------------------------------------
+
+if os.path.exists(_cfg.PHASH_LEDGER):
+    os.remove(_cfg.PHASH_LEDGER)
+
+_s = _run.run("CLM-1007", [f"samples/sideswipe_{a}.jpg" for a in "abc"],
+              attempt=1, user_photos=False)
+_sb = _s.confidence
+_unpriced = [li for li in _s.assessment.line_items if not li.priced]
+_base = round(_sb.claim_confidence + _sb.adas_penalty + _sb.authenticity_penalty, 3)
+
+_problems = []
+if _s.decision.tier != "low_confidence":
+    _problems.append(f"tier {_s.decision.tier}, expected low_confidence")
+if _sb.authenticity_penalty:
+    _problems.append("authenticity penalty applied; this claim has no flag")
+if not _sb.adas_penalty:
+    _problems.append("no ADAS penalty; the blind spot radar was not hit")
+if not (_cfg.TIER_STARTING_POINT_MIN <= _base < _cfg.TIER_VERIFY_MIN):
+    _problems.append(f"base {_base:.2f} is not a starting point on its own")
+if _sb.retrieval_density >= 1.0:
+    _problems.append("retrieval density did not drop below 1.00")
+if _sb.cross_stage_agreement >= 1.0:
+    _problems.append("cross-stage agreement did not drop below 1.00")
+if [li.panel for li in _unpriced] != ["left_rocker_panel"]:
+    _problems.append(f"unpriced lines are {[li.part for li in _unpriced]}, "
+                     f"expected only the rocker")
+
+if _problems:
+    print("[FAIL] sideswipe: " + "; ".join(_problems))
+    fails += 1
+else:
+    print(f"[ OK ] sideswipe base {_base:.2f} -> {_sb.claim_confidence:.2f} low "
+          f"confidence, retrieval {_sb.retrieval_density:.2f}, agreement "
+          f"{_sb.cross_stage_agreement:.2f}, rocker unpriced")
 
 
 # A good score must not be unconditional: bad files still fail the checks.

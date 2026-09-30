@@ -14,7 +14,7 @@ destroys more value than it creates.
 
 Split by design:
   - quality checks are deterministic arithmetic (see imaging.py)
-  - coverage judgement needs a VLM, because deciding "the damage runs off
+  - coverage judgment needs a VLM, because deciding "the damage runs off
     the frame edge" requires understanding what is in the picture
 """
 
@@ -73,7 +73,7 @@ def evaluate(
     coverage: dict,
     attempt: int,
 ) -> EvidenceVerdict:
-    """Combine deterministic quality with the VLM's coverage judgement.
+    """Combine deterministic quality with the VLM's coverage judgment.
 
     `coverage` comes from the assessment provider and carries:
         panels_visible : list[str]

@@ -90,6 +90,21 @@
       "vehicle_year": 2023,
       "vehicle_make": "Tesla",
       "vehicle_model": "Model 3"
+    },
+    "CLM-1007": {
+      "_scenario": "Low confidence, honestly reached. Side-swipe down the left side into the rear bumper corner. Photographs are adequate; the damage is not. Structural lines the model cannot judge from outside, one line the costing stage cannot price, sparse comparables, and a blind spot radar in the damaged corner. Expect: low confidence tier.",
+      "loss_date": "2026-09-24",
+      "policy_in_force": true,
+      "coverage_applies": true,
+      "deductible": 500.0,
+      "injury_reported": false,
+      "vehicle_count": 1,
+      "liability_disputed": false,
+      "open_siu_flag": false,
+      "obvious_total_loss": false,
+      "vehicle_year": 2022,
+      "vehicle_make": "Honda",
+      "vehicle_model": "CR-V"
     }
   }
 }

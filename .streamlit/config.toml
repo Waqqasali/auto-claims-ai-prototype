@@ -6,7 +6,7 @@
 # confidence bars: Streamlit's default primary is alarm red and ProgressColumn
 # inherits primaryColor, so a line item at 0.93 would render as a warning. The
 # bars are set to steel #4A6580 explicitly in app.py, because the bar carries
-# magnitude and the routing tier carries the judgement.
+# magnitude and the routing tier carries the judgment.
 
 [theme]
 base = "light"

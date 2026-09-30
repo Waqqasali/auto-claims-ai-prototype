@@ -72,7 +72,7 @@ def scene(seed: int, w=1600, h=1200, bg=(120, 125, 132)):
             d.rectangle([x0, my, x0 + rng.randint(60, 190), h - my],
                         fill=tuple(max(0, c - rng.randint(18, 46)) for c in panel))
 
-    # Damage region, placed away from centre so scenes do not converge.
+    # Damage region, placed away from center so scenes do not converge.
     cx = int(w * rng.uniform(0.28, 0.72))
     cy = int(h * rng.uniform(0.32, 0.68))
     rx, ry = int(w * rng.uniform(0.08, 0.17)), int(h * rng.uniform(0.07, 0.15))
@@ -117,6 +117,7 @@ def save(img, name, exif_dt=None):
 # Seeds are spread widely and chosen so that the resulting scenes clear the
 # duplicate threshold against every other claim's set. ui_test.py verifies it.
 SEED_GOOD, SEED_BAD, SEED_BUMPER, SEED_STALE = 101, 233, 419, 577
+SEED_SIDESWIPE = 811
 
 # 1. Good photos for the clean path (fallback set)
 for i, ang in enumerate(["a", "b", "c"], 1):
@@ -145,6 +146,13 @@ save(scene(SEED_STALE, bg=(128, 130, 136)), "stale_timestamp.jpg",
      exif_dt=datetime(2026, 8, 30, 9, 15))
 save(scene(SEED_STALE + 1, bg=(128, 130, 136)), "stale_timestamp_2.jpg",
      exif_dt=datetime(2026, 8, 30, 9, 17))
+
+# 7. Side-swipe for the low confidence claim (CLM-1007, loss 2026-09-24).
+# Wide, low aspect: a side-swipe is photographed along the length of the car.
+for i, ang in enumerate(["a", "b", "c"], 1):
+    save(scene(SEED_SIDESWIPE + i, w=1800, h=1100, bg=(132, 134, 138)),
+         f"sideswipe_{ang}.jpg",
+         exif_dt=datetime(2026, 9, 24, 17, 30) + timedelta(minutes=i))
 
 print("Generated:")
 for f in sorted(os.listdir(HERE)):

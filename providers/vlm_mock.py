@@ -93,7 +93,7 @@ _SCRIPTS: dict[str, dict] = {
             "line_items": [
                 {
                     "operation": "repair", "part": "left rear alloy wheel",
-                    "panel": "left_rear_wheel", "damage_type": "kerb damage",
+                    "panel": "left_rear_wheel", "damage_type": "curb damage",
                     "severity": "moderate",
                     "reasoning": "Gouging confined to the outer lip, through "
                                  "the gloss black finish to bare alloy across "
@@ -194,7 +194,126 @@ _SCRIPTS: dict[str, dict] = {
             ],
             "damage_panels": ["right_front_fender", "right_front_door"],
             "notes": "Assessment proceeds; authenticity concerns are handled "
-                     "separately and do not alter the damage judgement.",
+                     "separately and do not alter the damage judgment.",
+        },
+    },
+    # CLM-1007: LOW CONFIDENCE, REACHED HONESTLY.
+    #
+    # The photographs are good. The damage is the problem: a side-swipe whose
+    # three most expensive questions all turn on structure behind the visible
+    # surface. Nothing here is a trick to reach a tier. Each weak signal has a
+    # physical reason:
+    #   - weakest line 0.46: the rocker, which is structural and shows only
+    #     its outer skin in a photograph
+    #   - cross-stage agreement 0.88: the costing stub has no rocker panel
+    #     operations, so that line reaches the reviewer unpriced
+    #   - retrieval density 0.50: the rules table has patterns for the quarter
+    #     panel and rear bumper but none for the rear door or the rocker
+    # Weighted, that is 0.63, a starting point on its own. The blind spot
+    # radar in the damaged rear bumper corner then takes it to 0.38.
+    #
+    # The contrast with CLM-1003 is the point. The Camry was a solid estimate
+    # (0.85) pulled down by one sensor risk. This one was already weak before
+    # the sensor question was asked.
+    "CLM-1007": {
+        "coverage": {
+            "panels_visible": ["left_rear_door", "left_quarter_panel",
+                               "left_rocker_panel", "rear_bumper"],
+            "missing": [],
+            "unfixable": "",
+            "coverage_score": 0.85,
+            "notes": "All four damaged panels photographed square on and at an "
+                     "angle, including a low shot along the rocker. Adequate "
+                     "for assessment. The remaining uncertainty is behind the "
+                     "panels, which no further photograph would resolve.",
+        },
+        "damage": {
+            "line_items": [
+                {
+                    "operation": "repair", "part": "left rear door",
+                    "panel": "left_rear_door", "damage_type": "crease",
+                    "severity": "moderate",
+                    "reasoning": "Horizontal crease runs the length of the door "
+                                 "at handle height with scrape marks along it. "
+                                 "The metal appears stretched rather than torn, "
+                                 "so repair rather than replace, but a crease "
+                                 "that crosses the body line can prove beyond "
+                                 "repair once the panel is worked.",
+                    "confidence": 0.74,
+                },
+                {
+                    "operation": "refinish", "part": "left rear door",
+                    "panel": "left_rear_door", "damage_type": "paint",
+                    "severity": "moderate",
+                    "reasoning": "Paint fractured along the crease and scraped "
+                                 "through to primer in places.",
+                    "confidence": 0.84,
+                },
+                {
+                    "operation": "repair", "part": "left quarter panel",
+                    "panel": "left_quarter_panel", "damage_type": "fold",
+                    "severity": "severe",
+                    "reasoning": "Damage continues across the wheel arch lip, "
+                                 "which appears folded inward. The quarter "
+                                 "panel is welded to the body structure. If the "
+                                 "inner wheelhouse behind the lip is displaced, "
+                                 "the correct operation is sectioning rather "
+                                 "than repair, and that cannot be determined "
+                                 "from outside the vehicle.",
+                    "confidence": 0.55,
+                },
+                {
+                    "operation": "refinish", "part": "left quarter panel",
+                    "panel": "left_quarter_panel", "damage_type": "paint",
+                    "severity": "moderate",
+                    "reasoning": "Refinish follows the repair. Its extent "
+                                 "depends on how far the repair area runs.",
+                    "confidence": 0.82,
+                },
+                {
+                    "operation": "repair", "part": "left rocker panel",
+                    "panel": "left_rocker_panel", "damage_type": "scrape and dent",
+                    "severity": "moderate",
+                    "reasoning": "Scrape and a shallow dent run along the rocker "
+                                 "below the rear door. The rocker is part of the "
+                                 "body structure. The photographs show its outer "
+                                 "surface only, and whether the section behind "
+                                 "it is deformed decides between a cosmetic "
+                                 "repair and structural work.",
+                    "confidence": 0.46,
+                },
+                {
+                    "operation": "repair", "part": "rear bumper cover",
+                    "panel": "rear_bumper", "damage_type": "scuff and tear",
+                    "severity": "moderate",
+                    "reasoning": "Scuffing and a small tear at the left corner "
+                                 "where contact ended. The tear sits near the "
+                                 "corner mounting point. If the bracket behind "
+                                 "it is broken, the cover needs replacing rather "
+                                 "than repairing.",
+                    "confidence": 0.72,
+                },
+                {
+                    "operation": "refinish", "part": "rear bumper cover",
+                    "panel": "rear_bumper", "damage_type": "paint",
+                    "severity": "light",
+                    "reasoning": "Refinish the repaired corner.",
+                    "confidence": 0.86,
+                },
+                {
+                    "operation": "blend", "part": "left front door",
+                    "panel": "left_front_door", "damage_type": "n/a",
+                    "severity": "light",
+                    "reasoning": "Blend into the front door so the refinished "
+                                 "rear door matches across the seam.",
+                    "confidence": 0.80,
+                },
+            ],
+            "damage_panels": ["left_rear_door", "left_quarter_panel",
+                              "left_rocker_panel", "rear_bumper"],
+            "notes": "Photographs are adequate. The uncertainty is in the "
+                     "damage: three of the lines turn on structure behind the "
+                     "visible surface.",
         },
     },
 }
@@ -257,7 +376,7 @@ class MockVLM(VLMProvider):
 
         The two stages differ for uploaded photographs.
 
-        Coverage is a judgement about whether the evidence is adequate, and the
+        Coverage is a judgment about whether the evidence is adequate, and the
         deterministic checks have already measured the reviewer's actual files.
         A script saying "insufficient" about a photograph it never saw would
         contradict a real measurement, so uploads always take the generic path
@@ -288,7 +407,7 @@ class MockVLM(VLMProvider):
                     "request already issued on this claim."
                 )
 
-        # Honour reality: if the actual files fail the deterministic quality
+        # Honor reality: if the actual files fail the deterministic quality
         # checks, the mock must not pretend coverage is fine. This keeps the
         # refusal path genuine even in mock mode.
         unusable = [p for p in photos if not p.quality_ok]

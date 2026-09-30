@@ -80,7 +80,7 @@ def run(
 
     auth_flags = authenticity.summarize(photos)
 
-    # --- Stage 1c: coverage judgement (VLM) -------------------------------
+    # --- Stage 1c: coverage judgment (VLM) -------------------------------
     coverage = provider.assess_coverage(photos, ctx, vocabulary)
     verdict = evidence.evaluate(photos, coverage, attempt)
     result.evidence = verdict
@@ -135,7 +135,7 @@ def run(
 
     # --- Stage 4: confidence ----------------------------------------------
     # Retrieval density is measured over panels that actually carry damage.
-    # A 'blend' line item names an ADJACENT undamaged panel painted for colour
+    # A 'blend' line item names an ADJACENT undamaged panel painted for color
     # match, so including it would understate how well the real damage pattern
     # is covered by history.
     damaged_panels = sorted({
