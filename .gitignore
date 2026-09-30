@@ -21,3 +21,6 @@ runtime/phash_ledger.json
 .idea/
 .DS_Store
 Thumbs.db
+
+# Personal Claude Code instructions stay local.
+CLAUDE.local.md

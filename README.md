@@ -17,6 +17,48 @@ confidence score that drives routing.
 
 ---
 
+## Try it in five minutes
+
+Pick claims from the sidebar. Each step says what you should see.
+
+1. **A clean claim.** Open CLM-1001 (Mazda 6, real photographs). It routes to
+   **Verify** at 0.94. Open "Why the model proposed each line", then hover the
+   **?** beside each confidence score to see what produced it.
+2. **Refusal, then recovery.** Open CLM-1002. Attempt 1 is refused: the photos
+   are blurred, dark and too small, and the policyholder is told exactly which
+   three views to send. Switch to attempt 2 and press **Use the sample
+   resubmission photos**. It routes to **Verify** at 0.92, names four risks
+   behind the wheel that no photograph can confirm, and notes that the estimate
+   is below the $1,000 deductible.
+3. **Same penalty, different outcome.** Open CLM-1003 (Camry), then CLM-1007
+   (CR-V). Both damage a bumper that carries sensors, so both take the same 0.25
+   penalty. The Camry was strong before it and lands at **Starting point**
+   (0.60). The CR-V was already weak and lands at **Low confidence** (0.38).
+   One CR-V line cannot be priced, and the total says so.
+4. **What it refuses to decide.** CLM-1004's photos were taken before the
+   accident: flagged, confidence reduced, routed to a person, never denied.
+   CLM-1005 and CLM-1006 are excluded before any photograph is read.
+5. **Be the claims agent.** On CLM-1001, change a price, or add or delete a
+   line. The decision cannot be recorded until every change has a reason code
+   and the outcome matches the edits. Record it, then open the override log at
+   the bottom.
+
+**Then try to break it.** Upload a blurry photo, a screenshot, a file that is
+not an image, the same photo to two claims, or one photo where three were asked
+for. Turn on **Show design rationale** in the sidebar to see why each part of
+the screen works the way it does.
+
+Worth knowing before you upload your own photos:
+
+- In mock mode, the default, the damage line items come from each claim's
+  script, and the screen says so. Quality, date, reuse and confidence checks
+  measure your actual file.
+- The claims' loss dates are in September 2026, so a photo taken today is
+  flagged as outside the 14-day capture window, and a screenshot or a photo sent
+  through a messaging app has lost its date. Both are the checks working.
+- Everyone using a hosted copy shares one override log, and **Reset demo data**
+  clears it for everyone.
+
 ## Run it
 
 Requires Python 3.11 or 3.12. Both are exercised in CI on every push.
@@ -95,7 +137,7 @@ Seven claims are pre-loaded, and between them every routing tier is reachable. P
 | Claim | Scenario | Expected outcome |
 |---|---|---|
 | **CLM-1001** | 2021 Mazda 6, front corner damage. **Real photographs.** Damaged panels carry no sensors on this vehicle | `VERIFY` at 0.94, three line items. The blend line is the weakest but is excluded from the floor, because it paints an undamaged panel |
-| **CLM-1002** attempt 1 | 2020 Lincoln Navigator, curbed alloy wheel. Blurry, dark and low-resolution photos | `MORE PHOTOS NEEDED` — three specific angles requested |
+| **CLM-1002** attempt 1 | 2020 Lincoln Navigator, curbed alloy wheel. The first submission: blurred, too dark and too small | `MORE PHOTOS NEEDED` — three specific angles requested |
 | **CLM-1002** attempt 2 | Awaiting the resubmission. Upload `samples/navigator_wheel_*.jpg` | Assessment, estimate, and four risks the photos cannot resolve |
 | **CLM-1003** | 2021 Toyota Camry, rear bumper scuff | `STARTING POINT` at 0.60 |
 | **CLM-1004** | Photo EXIF timestamp predates the reported loss | `STARTING POINT`, authenticity flag raised, **not denied** |
@@ -110,9 +152,9 @@ the damage, and a step back showing which corner. Attempt 2 is the
 resubmission that supplies them.
 
 Attempt 2 starts empty on purpose: the request has gone out and nothing has
-come back, so the claim sits in a waiting state and nothing is assessed. Upload
-the three files in `samples/navigator_wheel_*.jpg`, or your own, and the claim
-proceeds. Upload fewer than three usable photos, or poor ones, and it escalates
+come back, so the claim sits in a waiting state and nothing is assessed. Press
+**Use the sample resubmission photos**, upload the three files in
+`samples/navigator_wheel_*.jpg`, or upload your own, and the claim proceeds. Upload fewer than three usable photos, or poor ones, and it escalates
 to a claims agent instead, because attempt 2 is the cap. In mock mode the count
 is what is checked: the mock cannot tell which view each photo shows.
 
@@ -182,15 +224,18 @@ A bad stub hardcodes a value in the middle of the logic and has to be unpicked
 from five places. The difference is whether a prototype is throwaway or is
 genuinely the first version of the production system.
 
-### Sample images are synthetic
+### Which sample images are real
 
-`samples/mazda6_*.jpg` and `samples/navigator_wheel_*.jpg` are real photographs
-of real damage, carrying synthetic EXIF so the metadata path is demonstrable. Every other file in `samples/` is
-generated by `samples/make_samples.py` and is not a car damage photograph. They exist so the pipeline runs end to end with zero setup
-and so the quality gate can be seen failing for **real measured reasons** —
-sharpness 0.7 on the blurred file, brightness 7.1 on the dark one — rather
-than simulated ones. Upload real photos in the sidebar to exercise the same
-checks against genuine files.
+| Files | What they are |
+|---|---|
+| `mazda6_*.jpg` (CLM-1001), `navigator_wheel_*.jpg` (CLM-1002 resubmission) | Real photographs of real damage, carrying synthetic EXIF so the metadata checks have dates to test |
+| `bad_blurry.jpg`, `bad_dark.jpg`, `bad_lowres.jpg` (CLM-1002 attempt 1) | The real Navigator photographs, degraded: blurred, darkened, shrunk. The same wheel, photographed badly the first time |
+| Everything else | Synthetic test images from `samples/make_samples.py`. Not car photographs, and labeled as such on screen |
+
+The quality gate fails for **real measured reasons**: sharpness 2 on the
+blurred file, brightness 22 on the dark one, 520 pixels on the small one,
+against thresholds of 60, 45 and 800. Upload real photos in the sidebar to
+exercise the same checks against your own files.
 
 ---
 
@@ -268,6 +313,7 @@ samples/                synthetic test images + generator
 runtime/                override log, perceptual-hash ledger
 smoke_test.py           pipeline test, all scenarios
 ui_test.py              Streamlit script test, all scenarios
+CLAUDE.md               instructions for Claude Code: rules, pinned numbers, style
 .github/workflows/      CI: both suites, Python 3.11 and 3.12, no API key
 ```
 

@@ -124,17 +124,34 @@ for i, ang in enumerate(["a", "b", "c"], 1):
     save(scene(SEED_GOOD + i), f"good_{ang}.jpg",
          exif_dt=datetime(2026, 9, 14, 14, 20) + timedelta(minutes=i))
 
-# 2. Blurry -> fails sharpness (CLM-1002 attempt 1)
-save(scene(SEED_BAD).filter(ImageFilter.GaussianBlur(7)), "bad_blurry.jpg",
-     exif_dt=datetime(2026, 9, 20, 11, 5))
+# 2 to 4. CLM-1002 attempt 1: the policyholder's first, unusable submission.
+# Built from the real Navigator photographs rather than synthetic scenes, so
+# the claim tells one story: the same wheel, photographed badly the first
+# time (blurred, too dark, too small), then properly on the resubmission.
+# Each fails a deterministic check for a reason a reader can see; the dark
+# one also measures as soft, as dusk photos usually do.
+# All three share CLM-1002 with the good photos, and the reuse screen skips
+# same-claim matches, so these near-duplicates never flag.
+NAV = {n: os.path.join(HERE, f"navigator_wheel_{n}.jpg")
+       for n in ("closeup", "angle", "context")}
 
-# 3. Dark -> fails brightness (CLM-1002 attempt 1)
-save(scene(SEED_BAD + 1, bg=(14, 15, 18)).point(lambda p: int(p * 0.16)),
-     "bad_dark.jpg", exif_dt=datetime(2026, 9, 20, 22, 40))
 
-# 4. Low resolution -> fails resolution (CLM-1002 attempt 1)
-save(scene(SEED_BAD + 2, 520, 390), "bad_lowres.jpg",
-     exif_dt=datetime(2026, 9, 20, 11, 9))
+def _plain(path):
+    with Image.open(path) as im:
+        return im.convert("RGB").copy()
+
+
+# Blurred: camera moved, or focus missed. Fails sharpness.
+save(_plain(NAV["angle"]).filter(ImageFilter.GaussianBlur(14)), "bad_blurry.jpg",
+     exif_dt=datetime(2026, 9, 20, 18, 5))
+
+# Too dark: taken at dusk without a light. Fails brightness, and sharpness.
+save(_plain(NAV["context"]).point(lambda p: int(p * 0.17)), "bad_dark.jpg",
+     exif_dt=datetime(2026, 9, 20, 19, 40))
+
+# Too small: a thumbnail forwarded from a messaging app. Fails resolution.
+save(_plain(NAV["closeup"]).resize((390, 520), Image.LANCZOS), "bad_lowres.jpg",
+     exif_dt=datetime(2026, 9, 20, 18, 9))
 
 # 5. Bumper photos for the ADAS surprise (CLM-1003)
 for i, ang in enumerate(["a", "b", "c"], 1):

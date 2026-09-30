@@ -747,6 +747,86 @@ else:
           f"{_one.decision.tier}")
 
 
+# --------------------------------------------------------------------------
+# Sample resubmission. A visitor to a hosted copy has no photo files, so the
+# waiting screen on CLM-1002 attempt 2 loads the three Navigator photos in one
+# click. It must reach the same result as uploading them, and Clear must
+# return to the waiting state.
+# --------------------------------------------------------------------------
+
+if os.path.exists(_cfg.PHASH_LEDGER):
+    os.remove(_cfg.PHASH_LEDGER)
+at = AppTest.from_file("app.py", default_timeout=120).run()
+at.sidebar.selectbox[0].set_value("CLM-1002").run()
+at.sidebar.radio[0].set_value(2).run()
+
+
+def _shown(at):
+    return " ".join(str(getattr(e, "value", "") or getattr(e, "body", ""))
+                    for e in list(at.markdown) + list(at.get("html"))
+                    + list(at.caption) + list(at.info))
+
+
+_use = [b for b in at.button if b.label == "Use the sample resubmission photos"]
+if at.exception or not _use:
+    print("[FAIL] sample: no sample button on the waiting screen")
+    fails += 1
+else:
+    _use[0].click().run()
+    _txt = _shown(at)
+    _clear = [b for b in at.button if b.label == "Clear"]
+    if at.exception or "VERIFY" not in _txt or "0.92" not in _txt:
+        print(f"[FAIL] sample: sample photos did not verify at 0.92 "
+              f"({[e.message for e in at.exception]})")
+        fails += 1
+    elif "scripted assessment" not in _txt:
+        print("[FAIL] sample: mock-mode notice missing on the sample run")
+        fails += 1
+    elif not _clear:
+        print("[FAIL] sample: no way back to the waiting state")
+        fails += 1
+    else:
+        _clear[0].click().run()
+        if at.exception or "AWAITING RESUBMISSION" not in _shown(at):
+            print("[FAIL] sample: Clear did not return to the waiting state")
+            fails += 1
+        else:
+            print("[ OK ] sample   one click reaches verify 0.92; Clear returns "
+                  "to the waiting state")
+
+# --------------------------------------------------------------------------
+# The Try-it guide quotes numbers. They must be the numbers the app produces,
+# in both places the guide appears, or a visitor following it sees a mismatch
+# on the first step.
+# --------------------------------------------------------------------------
+
+_readme = open("README.md", encoding="utf-8").read()
+_guide_md = _readme[_readme.index("## Try it in five minutes"):_readme.index("## Run it")]
+_app_src = open("app.py", encoding="utf-8").read()
+_guide_app = _app_src[_app_src.index("Five things to try"):_app_src.index("claims = gate.list_claims()")]
+
+_nav_paths = [f"samples/navigator_wheel_{n}.jpg" for n in ("closeup", "angle", "context")]
+_quoted = {
+    "CLM-1001": _run.run("CLM-1001", [f"samples/mazda6_{n}.jpg" for n in ("front", "corner", "damage")],
+                         attempt=1, record_hashes=False),
+    "CLM-1002 resubmission": _run.run("CLM-1002", _nav_paths, attempt=2,
+                                      user_photos=True, record_hashes=False),
+    "CLM-1003": _run.run("CLM-1003", [f"samples/bumper_{a}.jpg" for a in "abc"],
+                         attempt=1, record_hashes=False),
+    "CLM-1007": _run.run("CLM-1007", [f"samples/sideswipe_{a}.jpg" for a in "abc"],
+                         attempt=1, record_hashes=False),
+}
+_missing = [f"{name} {r.confidence.claim_confidence:.2f} in {where}"
+            for name, r in _quoted.items()
+            for where, text in (("README", _guide_md), ("sidebar", _guide_app))
+            if f"{r.confidence.claim_confidence:.2f}" not in text]
+if _missing:
+    print(f"[FAIL] guide: numbers not in the guide: {_missing}")
+    fails += 1
+else:
+    print("[ OK ] guide    every confidence the guide quotes matches the app, "
+          "in the README and the sidebar")
+
 # A good score must not be unconditional: bad files still fail the checks.
 _bad = _run.run("CLM-1002", ["samples/bad_blurry.jpg", "samples/bad_dark.jpg"],
                 attempt=2, user_photos=True)

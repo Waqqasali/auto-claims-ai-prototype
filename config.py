@@ -89,5 +89,27 @@ SAMPLES_DIR = os.path.join(os.path.dirname(__file__), "samples")
 # presenter's real ledger and override log.
 RUNTIME_DIR = (os.environ.get("CLAIMS_RUNTIME_DIR")
                or os.path.join(os.path.dirname(__file__), "runtime"))
+
+
+def _writable(path: str) -> bool:
+    try:
+        os.makedirs(path, exist_ok=True)
+        probe = os.path.join(path, ".write_probe")
+        with open(probe, "w", encoding="utf-8") as fh:
+            fh.write("ok")
+        os.remove(probe)
+        return True
+    except OSError:
+        return False
+
+
+# A hosting service may mount the app folder read-only. Falling back to the
+# system temporary folder keeps the app running; the ledger and log are then
+# per-instance and cleared when the host restarts, which is acceptable for a
+# demo and is disclosed in the README.
+if not _writable(RUNTIME_DIR):
+    import tempfile
+    RUNTIME_DIR = os.path.join(tempfile.gettempdir(), "claims-runtime")
+    os.makedirs(RUNTIME_DIR, exist_ok=True)
 OVERRIDE_LOG = os.path.join(RUNTIME_DIR, "overrides.jsonl")
 PHASH_LEDGER = os.path.join(RUNTIME_DIR, "phash_ledger.json")
