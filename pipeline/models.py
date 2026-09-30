@@ -37,6 +37,9 @@ class ClaimContext:
     # be applied to a photograph it has never seen. Defaulted, so it has to
     # come after every required field.
     user_supplied_photos: bool = False
+    # Which submission this is. The mock consults it so a claim can behave
+    # differently on a resubmission, which is what the re-request loop is for.
+    attempt: int = 1
 
     @property
     def vehicle_label(self) -> str:

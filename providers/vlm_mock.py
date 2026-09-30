@@ -23,50 +23,56 @@ from providers.vlm_base import VLMProvider
 # Scripted responses for the demo claims. Keyed by claim_id so the scenarios
 # behave predictably when recording.
 _SCRIPTS: dict[str, dict] = {
-    # Clean path: pre-ADAS vehicle, non-sensor panel.
+    # Clean path, real photographs. The damaged panels carry no sensors
+    # on this vehicle, so nothing complicates the assessment.
     "CLM-1001": {
         "coverage": {
-            "panels_visible": ["left_front_door", "left_front_fender"],
+            "panels_visible": ["front_bumper", "left_front_fender", "front_grille"],
             "missing": [],
             "unfixable": "",
-            "coverage_score": 0.95,
-            "notes": "Damage fully in frame across three angles.",
+            "coverage_score": 0.94,
+            "notes": "Three angles: whole front in frame, the left front "
+                     "corner at the fender seam, and a close-up of the damage.",
         },
         "damage": {
             "line_items": [
                 {
-                    "operation": "repair", "part": "left front door shell",
-                    "panel": "left_front_door", "damage_type": "dent",
+                    "operation": "replace", "part": "front bumper cover",
+                    "panel": "front_bumper", "damage_type": "crease and tear",
                     "severity": "moderate",
-                    "reasoning": "Single impact dent approximately 20cm across, "
-                                 "no crease crossing a body line, paint intact "
-                                 "at the perimeter. Repairable rather than "
-                                 "replacement.",
-                    "confidence": 0.91,
+                    "reasoning": "Crease runs from below the left headlamp "
+                                 "across the cover, and the cover has parted "
+                                 "at the fender seam with the mounting tab "
+                                 "deformed. A torn mounting point cannot be "
+                                 "pulled back to a factory fit, so this is a "
+                                 "replacement rather than a repair.",
+                    "confidence": 0.90,
                 },
                 {
-                    "operation": "refinish", "part": "left front door",
-                    "panel": "left_front_door", "damage_type": "paint damage",
+                    "operation": "refinish", "part": "front bumper cover",
+                    "panel": "front_bumper", "damage_type": "paint",
                     "severity": "moderate",
-                    "reasoning": "Clear coat scuffed across the impact area; "
-                                 "refinish required after repair.",
-                    "confidence": 0.93,
+                    "reasoning": "Replacement covers are supplied in primer "
+                                 "and require refinishing to the vehicle's "
+                                 "metallic grey.",
+                    "confidence": 0.92,
                 },
                 {
-                    "operation": "blend", "part": "left rear door",
-                    "panel": "left_rear_door", "damage_type": "n/a",
+                    "operation": "blend", "part": "left front fender",
+                    "panel": "left_front_fender", "damage_type": "n/a",
                     "severity": "light",
-                    "reasoning": "Adjacent panel blend for colour match on a "
-                                 "metallic finish.",
+                    "reasoning": "Adjacent panel blend so the refinished cover "
+                                 "matches across the seam. Metallic finishes "
+                                 "show a hard edge without it.",
                     "confidence": 0.86,
                 },
             ],
-            "damage_panels": ["left_front_door", "left_rear_door"],
-            "notes": "Contained single-panel impact.",
+            "damage_panels": ["front_bumper", "left_front_fender"],
+            "notes": "Damage confined to the left front corner. No evidence of "
+                     "intrusion past the bumper reinforcement in these angles.",
         },
     },
 
-    # Insufficient evidence: triggers the re-request loop.
     "CLM-1002": {
         "coverage": {
             "panels_visible": ["front_bumper"],

@@ -51,6 +51,7 @@ def run(
 ) -> ClaimResult:
     ctx = gate.load_claim_context(claim_id)
     ctx.user_supplied_photos = user_photos
+    ctx.attempt = attempt
     result = ClaimResult(context=ctx, attempt=attempt)
 
     # --- Stage 0: processing gate ----------------------------------------

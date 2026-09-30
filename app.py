@@ -73,14 +73,25 @@ REJECTION_REASONS = [
     "refer to Special Investigation Unit",
 ]
 
+# Photographs per claim, and per attempt where a resubmission differs.
+# CLM-1001 uses three real photographs of front corner damage; everything else
+# is synthetic, and deliberately obvious about it.
 SCENARIO_PHOTOS = {
-    "CLM-1001": ["good_a.jpg", "good_b.jpg", "good_c.jpg"],
-    "CLM-1002": ["bad_blurry.jpg", "bad_dark.jpg", "bad_lowres.jpg"],
-    "CLM-1003": ["bumper_a.jpg", "bumper_b.jpg", "bumper_c.jpg"],
-    "CLM-1004": ["stale_timestamp.jpg", "stale_timestamp_2.jpg"],
-    "CLM-1005": ["good_a.jpg"],
-    "CLM-1006": ["good_a.jpg"],
+    ("CLM-1001", 1): ["mazda6_front.jpg", "mazda6_corner.jpg", "mazda6_damage.jpg"],
+    ("CLM-1002", 1): ["bad_blurry.jpg", "bad_dark.jpg", "bad_lowres.jpg"],
+    ("CLM-1002", 2): ["bad_blurry.jpg", "bad_dark.jpg"],
+    ("CLM-1003", 1): ["bumper_a.jpg", "bumper_b.jpg", "bumper_c.jpg"],
+    ("CLM-1004", 1): ["stale_timestamp.jpg", "stale_timestamp_2.jpg"],
+    ("CLM-1005", 1): ["good_a.jpg"],
+    ("CLM-1006", 1): ["good_a.jpg"],
 }
+
+
+def photos_for(claim_id: str, attempt: int) -> list[str]:
+    """Photos for this attempt, falling back to the first submission."""
+    return SCENARIO_PHOTOS.get((claim_id, attempt)) or SCENARIO_PHOTOS.get(
+        (claim_id, 1), []
+    )
 
 # (accent, tint) per routing tier. The dot and the rule carry the colour; the
 # pill carries the tint; badge text stays ink so the tier reads as a label
@@ -118,8 +129,9 @@ with st.sidebar:
 
     attempt = st.radio(
         "Submission attempt", [1, 2], horizontal=True,
-        help="Attempt 2 on CLM-1002 demonstrates the re-request cap and the "
-             "bail-out to a human.",
+        help="Attempt 2 is the resubmission. On CLM-1002 it is still "
+             "unusable, so the attempt cap is reached and a person takes over. "
+             "Upload your own photos to see the loop resolve instead.",
     )
 
     uploaded = st.file_uploader(
@@ -192,9 +204,7 @@ if uploaded:
             fh.write(f.getbuffer())
         paths.append(dest)
 else:
-    paths = [os.path.join(SAMPLES, n) for n in SCENARIO_PHOTOS.get(claim_id, [])]
-    if attempt == 2 and claim_id == "CLM-1002":
-        paths = paths[:2]
+    paths = [os.path.join(SAMPLES, n) for n in photos_for(claim_id, attempt)]
 
 if not paths:
     st.warning("No photos for this claim. Upload some in the sidebar.")

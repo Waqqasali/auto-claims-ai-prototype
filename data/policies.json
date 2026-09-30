@@ -2,8 +2,8 @@
   "_comment": "STUBBED policy administration system. In production the gate reads these fields over an API from the carrier's policy and claims systems. ASSUMPTION: real-time programmatic access exists. If a carrier's policy system is batch-only, the gate cannot run synchronously and the whole flow becomes asynchronous — a deployment discovery, not a design change.",
   "claims": {
     "CLM-1001": {
-      "_scenario": "Clean path. Pre-ADAS vehicle, non-sensor panel. Expect: verify tier.",
-      "loss_date": "2026-09-14",
+      "_scenario": "Clean path, real photographs. Front corner damage on a panel carrying no sensors. Expect: verify tier.",
+      "loss_date": "2026-09-20",
       "policy_in_force": true,
       "coverage_applies": true,
       "deductible": 500.0,
@@ -12,12 +12,12 @@
       "liability_disputed": false,
       "open_siu_flag": false,
       "obvious_total_loss": false,
-      "vehicle_year": 2015,
-      "vehicle_make": "Honda",
-      "vehicle_model": "Civic"
+      "vehicle_year": 2021,
+      "vehicle_make": "Mazda",
+      "vehicle_model": "6"
     },
     "CLM-1002": {
-      "_scenario": "Insufficient evidence. Expect: re-request, then escalation at the attempt cap.",
+      "_scenario": "Insufficient evidence. Expect: a specific re-request, then escalation at the attempt cap. Upload your own photos here to see the loop resolve.",
       "loss_date": "2026-09-20",
       "policy_in_force": true,
       "coverage_applies": true,
@@ -27,9 +27,9 @@
       "liability_disputed": false,
       "open_siu_flag": false,
       "obvious_total_loss": false,
-      "vehicle_year": 2022,
-      "vehicle_make": "Honda",
-      "vehicle_model": "CR-V"
+      "vehicle_year": 2020,
+      "vehicle_make": "Lincoln",
+      "vehicle_model": "Navigator"
     },
     "CLM-1003": {
       "_scenario": "The surprise. Rear bumper scuff on a sensor-equipped sedan — looks trivially automatable, is not. Expect: ADAS penalty drops it to starting_point.",
