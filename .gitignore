@@ -25,3 +25,6 @@ Thumbs.db
 
 # Personal Claude Code instructions stay local.
 CLAUDE.local.md
+
+# Private reference documents for Claude Code. Never committed.
+private/

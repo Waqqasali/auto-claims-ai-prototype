@@ -24,6 +24,8 @@ python smoke_test.py        # pipeline across all seven claims
 python ui_test.py           # the Streamlit script itself, about 47 checks
 ```
 
+Both suites force `VLM_PROVIDER=mock` whatever `.env` says, so they never call the API.
+
 Live vision calls: copy `.env.example` to `.env`, set `VLM_PROVIDER=anthropic`
 and `ANTHROPIC_API_KEY`. Never print, log or commit the key.
 

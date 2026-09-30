@@ -4,6 +4,10 @@
 import os as _os
 import tempfile as _tempfile
 _os.environ["CLAIMS_RUNTIME_DIR"] = _tempfile.mkdtemp(prefix="claims-test-")
+# Tests always run in mock mode. A .env set up for live mode would otherwise
+# make real API calls and break the pinned numbers. load_dotenv() never
+# overrides a variable that is already set.
+_os.environ["VLM_PROVIDER"] = "mock"
 import glob, os, sys
 from pipeline import run, routing
 
