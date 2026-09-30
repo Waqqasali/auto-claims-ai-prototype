@@ -53,13 +53,48 @@ def compute(
     explanation: list[str] = []
 
     # --- Base: weighted blend, anchored on the weakest line -------------
-    if assessment.line_items:
-        floor = min(li.confidence for li in assessment.line_items)
-        weakest = min(assessment.line_items, key=lambda li: li.confidence)
+    #
+    # BLEND LINES ARE EXCLUDED FROM THE FLOOR.
+    #
+    # A 'blend' names an ADJACENT UNDAMAGED panel that gets paint only so the
+    # refinished panel next to it does not show a hard edge. Its confidence is
+    # a judgement about colour match, not about the damage.
+    #
+    # Left in, it routinely becomes the weakest line and sets the confidence
+    # for the whole claim. On CLM-1001 the blend sits at 0.86 and carries
+    # $80.60 of a $1,061.20 estimate, while the $831.80 bumper replacement at
+    # 0.90 has no influence at all. The score would then be governed by the
+    # least consequential line in the file.
+    #
+    # The asymmetry is the justification. A wrong blend call costs an $80 paint
+    # operation that a shop corrects without a supplement. A wrong replace call
+    # is the kind of error this product exists to catch.
+    #
+    # run.py already excludes blends from the panel set fed to retrieval
+    # density, for the same underlying reason: a blend names a panel that is
+    # not damaged. This makes the two treatments consistent.
+    scoring_items = [li for li in assessment.line_items
+                     if li.operation.lower() != "blend"]
+
+    # An estimate of nothing but blends should not score 1.0 by default, so
+    # fall back to the full set rather than to an empty one.
+    if not scoring_items:
+        scoring_items = list(assessment.line_items)
+
+    if scoring_items:
+        floor = min(li.confidence for li in scoring_items)
+        weakest = min(scoring_items, key=lambda li: li.confidence)
+        excluded = len(assessment.line_items) - len(scoring_items)
+        note = (
+            f" {excluded} blend line(s) excluded: a blend is paint on an "
+            f"undamaged panel for colour match, so its confidence is not a "
+            f"judgement about the damage."
+            if excluded else ""
+        )
         explanation.append(
             f"Weakest line item is '{weakest.operation} {weakest.part}' at "
             f"{floor:.2f}. Claim confidence is anchored here rather than on the "
-            f"average, because one wrong line ruins an estimate."
+            f"average, because one wrong line ruins an estimate.{note}"
         )
     else:
         floor = 0.0

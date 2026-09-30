@@ -304,6 +304,144 @@ else:
     print(f"[ OK ] navigator  weighted {_b.claim_confidence:.2f} / "
           f"anchored {min(_sig):.2f}, both verify")
 
+# --------------------------------------------------------------------------
+# A blend is paint on an UNDAMAGED adjacent panel for colour match, so it must
+# never set the claim's confidence. CLM-1001 is the case that proves it: its
+# blend line is the lowest-confidence line in the estimate and the cheapest.
+# --------------------------------------------------------------------------
+
+_m = _run.run("CLM-1001",
+              ["samples/mazda6_front.jpg", "samples/mazda6_corner.jpg",
+               "samples/mazda6_damage.jpg"], attempt=1, user_photos=False)
+_items = _m.assessment.line_items
+_blends = [li for li in _items if li.operation.lower() == "blend"]
+_real = [li for li in _items if li.operation.lower() != "blend"]
+
+if not _blends:
+    print("[FAIL] blend: CLM-1001 has no blend line, so this proves nothing")
+    fails += 1
+elif min(li.confidence for li in _blends) >= min(li.confidence for li in _real):
+    print("[FAIL] blend: the blend is no longer the weakest line, so this "
+          "test has stopped testing anything")
+    fails += 1
+elif _m.confidence.line_item_floor != min(li.confidence for li in _real):
+    print(f"[FAIL] blend: floor is {_m.confidence.line_item_floor}, expected "
+          f"{min(li.confidence for li in _real)} (blend excluded)")
+    fails += 1
+else:
+    print(f"[ OK ] blend    floor {_m.confidence.line_item_floor:.2f} from "
+          f"damage lines, not the {min(li.confidence for li in _blends):.2f} blend")
+
+# A blend-only estimate must not score 1.00 by scoring nothing at all.
+from pipeline import confidence as _conf  # noqa: E402
+from pipeline.models import Assessment, LineItem  # noqa: E402
+
+_only = Assessment(line_items=[
+    LineItem(operation="blend", part="left front fender",
+             panel="left_front_fender", damage_type="", severity="",
+             reasoning="", confidence=0.55),
+])
+_b2 = _conf.compute(_only, 1.0, 1.0, 1.0, [], [])
+if _b2.line_item_floor != 0.55:
+    print(f"[FAIL] blend: blend-only estimate scored floor "
+          f"{_b2.line_item_floor}, expected the 0.55 fallback")
+    fails += 1
+else:
+    print("[ OK ] blend    blend-only estimate falls back to the full set")
+
+
+# --------------------------------------------------------------------------
+# Sample photographs belonging to DIFFERENT claims must not be near-identical.
+#
+# A perceptual hash reads only an image's coarse luminance layout, so synthetic
+# samples that share a composition hash alike no matter how much fine detail
+# differs. When that happened, the authenticity screen flagged whichever
+# scripted claim was opened second as a reused photograph, purely as a function
+# of click order, and it dropped the Camry from 0.60 to 0.40 against the worked
+# example in the PRD.
+#
+# This is invisible in ordinary use and only shows up on stage, so it is
+# asserted rather than trusted.
+# --------------------------------------------------------------------------
+
+import itertools  # noqa: E402
+import os  # noqa: E402
+
+from pipeline import imaging as _img  # noqa: E402
+from config import PHASH_DUPLICATE_DISTANCE  # noqa: E402
+
+_CLAIM_OF = {
+    **{f"mazda6_{n}.jpg": "CLM-1001" for n in ("front", "corner", "damage")},
+    **{f"bad_{n}.jpg": "CLM-1002" for n in ("blurry", "dark", "lowres")},
+    **{f"navigator_wheel_{n}.jpg": "CLM-1002" for n in
+       ("closeup", "angle", "context")},
+    **{f"bumper_{a}.jpg": "CLM-1003" for a in "abc"},
+    "stale_timestamp.jpg": "CLM-1004",
+    "stale_timestamp_2.jpg": "CLM-1004",
+    **{f"good_{a}.jpg": "shared" for a in "abc"},
+}
+
+_samples = sorted(f for f in os.listdir("samples") if f.endswith(".jpg"))
+_hashes = {f: _img.measure(os.path.join("samples", f))["perceptual_hash"]
+           for f in _samples}
+
+_unowned = [f for f in _samples if f not in _CLAIM_OF]
+_clashes = []
+_closest = 999
+for _a, _b in itertools.combinations(_samples, 2):
+    if _CLAIM_OF.get(_a, _a) == _CLAIM_OF.get(_b, _b):
+        continue                      # same claim: three angles should look alike
+    _d = _img.hamming(_hashes[_a], _hashes[_b])
+    _closest = min(_closest, _d)
+    if _d <= PHASH_DUPLICATE_DISTANCE:
+        _clashes.append((_d, _a, _b))
+
+if _unowned:
+    print(f"[FAIL] samples: {_unowned} are not assigned to a claim in this "
+          f"test, so they are not being checked")
+    fails += 1
+elif _clashes:
+    print(f"[FAIL] samples: {len(_clashes)} cross-claim pair(s) within the "
+          f"duplicate threshold of {PHASH_DUPLICATE_DISTANCE}:")
+    for _d, _a, _b in _clashes[:5]:
+        print(f"         {_d:2d}  {_a} / {_b}")
+    fails += 1
+else:
+    print(f"[ OK ] samples  no cross-claim collisions, closest pair "
+          f"{_closest} vs threshold {PHASH_DUPLICATE_DISTANCE}")
+
+
+# --------------------------------------------------------------------------
+# The Camry is the PRD's worked example, so its numbers are pinned to the
+# document: three line items, the sensor line weakest at 0.71, the ADAS penalty
+# applied, and nothing else. It must resolve to 0.60 and route as a starting
+# point, from a clean ledger.
+# --------------------------------------------------------------------------
+
+import config as _cfg  # noqa: E402
+
+if os.path.exists(_cfg.PHASH_LEDGER):
+    os.remove(_cfg.PHASH_LEDGER)
+
+_c = _run.run("CLM-1003", [f"samples/bumper_{a}.jpg" for a in "abc"],
+              attempt=1, user_photos=False)
+_cb = _c.confidence
+if round(_cb.claim_confidence, 2) != 0.60:
+    print(f"[FAIL] camry: confidence {_cb.claim_confidence:.2f}, PRD says 0.60")
+    fails += 1
+elif _c.decision.tier != "starting_point":
+    print(f"[FAIL] camry: tier {_c.decision.tier}, PRD says starting point")
+    fails += 1
+elif _cb.authenticity_penalty:
+    print(f"[FAIL] camry: an authenticity penalty of "
+          f"{_cb.authenticity_penalty:.2f} was applied; the worked example "
+          f"has only the ADAS penalty")
+    fails += 1
+else:
+    print(f"[ OK ] camry    {_cb.claim_confidence:.2f} starting point, "
+          f"ADAS penalty only, matching the PRD")
+
+
 # A good score must not be unconditional: bad files still fail the checks.
 _bad = _run.run("CLM-1002", ["samples/bad_blurry.jpg", "samples/bad_dark.jpg"],
                 attempt=2, user_photos=True)

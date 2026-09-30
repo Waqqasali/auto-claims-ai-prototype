@@ -145,7 +145,11 @@ HELP_LINE_ITEM_FLOOR = (
     "The claim is anchored on the lowest of them rather than the average. Ten "
     "lines at 0.90 and one at 0.60 is not a 0.87 claim, because one wrong line "
     "ruins an estimate, and the weak line is usually the sensor or structural "
-    "item that generates the supplement."
+    "item that generates the supplement.\n\n"
+    "Blend lines are excluded. A blend is paint applied to an adjacent "
+    "undamaged panel so the refinished panel beside it does not show a hard "
+    "edge, so its confidence is a judgement about colour match rather than "
+    "about the damage."
 )
 
 HELP_EVIDENCE_COVERAGE = (
