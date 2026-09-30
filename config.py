@@ -27,11 +27,22 @@ except ImportError:
 # "anthropic" makes real vision calls. Set VLM_PROVIDER=anthropic and
 # ANTHROPIC_API_KEY to use it.
 VLM_PROVIDER = os.environ.get("VLM_PROVIDER", "mock")
-# Sonnet is the default rather than Opus because this is a per-claim task at
-# volume: two vision calls on every claim, and the business case in the PRD
-# turns on unit cost at 500k claims a year. Which model ships is a production
-# decision requiring evaluation data that does not exist yet; the abstraction
-# in providers/ is what makes it a swap rather than a rewrite.
+# Sonnet is a sensible default for running the prototype, not a production
+# recommendation.
+#
+# Inference cost does NOT decide this. At 500,000 claims a year and two vision
+# calls each, Sonnet runs about $20k a year and Opus about $41k, against a
+# $14M annual cost for the agent step the product is trying to shorten. The
+# difference between the two is 0.7% of the Phase 1 saving, and it pays for
+# itself if the stronger model widens the automatable band by ~1,900 claims,
+# which is 0.4% of volume.
+#
+# So the deciding measure is band width, not price: a model that identifies
+# panels more reliably earns higher per-item confidence, which widens the band
+# that Phase 2 can handle without an agent. That is measurable only against
+# calibration data which does not exist before deployment, which is why the PRD
+# declines to name a model. The abstraction in providers/ is what keeps this a
+# configuration decision rather than a rewrite.
 ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-5")
 
 # --- Stage 1: image quality -------------------------------------------------
