@@ -13,6 +13,28 @@ from PIL import Image, ExifTags
 # Reverse map so we can look up tag numbers by name
 _TAG_IDS = {name: num for num, name in ExifTags.TAGS.items()}
 
+# HEIC is what an iPhone shoots by default, so a reviewer photographing real
+# damage will most often produce one. Pillow cannot read it alone. The import
+# is optional: without the package the format simply is not offered, rather
+# than the app failing to start.
+try:
+    import pillow_heif
+
+    pillow_heif.register_heif_opener()
+    HEIF_AVAILABLE = True
+except Exception:  # pragma: no cover - depends on the install
+    HEIF_AVAILABLE = False
+
+# Everything Pillow reads that a claim photograph plausibly arrives as.
+# WEBP and HEIC usually reach us stripped of EXIF, which the authenticity
+# stage flags rather than ignores.
+_BASE_UPLOAD_TYPES = ["jpg", "jpeg", "png", "webp", "bmp", "tif", "tiff", "gif"]
+
+
+def supported_upload_types() -> list[str]:
+    """Extensions the uploader should accept, given what is installed."""
+    return _BASE_UPLOAD_TYPES + (["heic", "heif"] if HEIF_AVAILABLE else [])
+
 
 def _laplacian_variance(img: Image.Image) -> float:
     """Variance of the Laplacian: the standard cheap sharpness measure.

@@ -47,8 +47,10 @@ def run(
     attempt: int = 1,
     provider_name: str | None = None,
     record_hashes: bool = True,
+    user_photos: bool = False,
 ) -> ClaimResult:
     ctx = gate.load_claim_context(claim_id)
+    ctx.user_supplied_photos = user_photos
     result = ClaimResult(context=ctx, attempt=attempt)
 
     # --- Stage 0: processing gate ----------------------------------------

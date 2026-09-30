@@ -16,3 +16,8 @@ anthropic>=0.40,<2.0        # tested against 1.9.0
 # Optional convenience: lets you keep credentials in a local .env file instead
 # of exporting them. The application runs without it.
 python-dotenv>=1.0,<2.0
+
+# Optional: lets the uploader accept HEIC/HEIF, which is what an iPhone shoots
+# by default. Without it the app runs normally and simply does not offer those
+# extensions. Ships prebuilt wheels, so pip install is enough on Windows.
+pillow-heif>=0.16,<2.0

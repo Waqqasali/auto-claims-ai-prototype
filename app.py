@@ -30,7 +30,7 @@ from config import (
     TIER_VERIFY_MIN,
     VLM_PROVIDER,
 )
-from pipeline import adas, comparables, gate, pricing, routing, run
+from pipeline import adas, comparables, gate, imaging, pricing, routing, run
 
 st.set_page_config(
     page_title="AI Assisted Damage Assessment and Claim Triage",
@@ -112,16 +112,16 @@ with st.sidebar:
 
     uploaded = st.file_uploader(
         "Or upload your own photos",
-        # WEBP is included because that is what browsers and messaging apps
-        # produce. It usually arrives with EXIF stripped by the re-encode,
-        # which the authenticity stage flags rather than ignores. That is the
-        # PRD's "metadata is stripped in transit" assumption, demonstrable.
-        type=["jpg", "jpeg", "png", "webp"],
+        # Whatever Pillow can read in this install, including HEIC when
+        # pillow-heif is present. WEBP and HEIC usually arrive with EXIF
+        # stripped, which the authenticity stage flags rather than ignores.
+        type=imaging.supported_upload_types(),
         accept_multiple_files=True,
-        help="Uploaded photos run through the real quality and authenticity "
-             "checks. In mock mode the damage assessment stays scripted. "
-             "A file that reached you through a messaging app or a browser "
-             "has usually lost its EXIF, which raises an authenticity flag.",
+        help="Your photos replace the demo set and run against this claim's "
+             "policy and vehicle. Quality, authenticity and confidence all "
+             "measure your actual file. A photo that reached you through a "
+             "messaging app or browser has usually lost its EXIF, which "
+             "raises an authenticity flag.",
     )
 
     st.divider()
@@ -184,13 +184,27 @@ if not paths:
     st.warning("No photos for this claim. Upload some in the sidebar.")
     st.stop()
 
-result = run.run(claim_id, paths, attempt=attempt, record_hashes=False)
+result = run.run(
+    claim_id, paths, attempt=attempt, record_hashes=False,
+    user_photos=bool(uploaded),
+)
 ctx = result.context
 
 
 # --------------------------------------------------------------------------
 # Header and decision
 # --------------------------------------------------------------------------
+
+if uploaded:
+    st.info(
+        f"Running your {len(paths)} photo(s) against **{claim_id}** — its "
+        f"policy, vehicle and loss date. Quality, authenticity, confidence "
+        f"and routing all measure your actual files. In mock mode the damage "
+        f"line items are generic, because this claim's scripted assessment "
+        f"describes photographs the script has seen and yours it has not. "
+        f"Set `VLM_PROVIDER=anthropic` for a real reading of your photos.",
+        icon="📎",
+    )
 
 st.markdown(f"### {claim_id} · {ctx.vehicle_label}")
 c1, c2, c3, c4 = st.columns(4)
@@ -224,6 +238,24 @@ st.html(
 
 for reason in decision.reasons:
     st.markdown(f"- {reason}")
+
+NEXT_STEP = {
+    "verify": "**Next:** check the line items against the photographs rather "
+              "than rebuilding them, then record your decision at the bottom.",
+    "starting_point": "**Next:** work through the named risks below, correct "
+                      "any line item that needs it, then record your decision. "
+                      "Every change asks for a reason code.",
+    "low_confidence": "**Next:** treat the figures as a starting list only. "
+                      "Rebuild what you need, then record your decision.",
+    "re_request": "**Next:** the request has gone to the policyholder. Nothing "
+                  "further happens on this claim until they resubmit.",
+    "escalated": "**Next:** a claims agent picks this up, with the photographs "
+                 "and the reason each one could not be used.",
+    "not_processed": "**Next:** this claim leaves the automated path entirely "
+                     "and is handled in the normal workflow.",
+}
+if tier in NEXT_STEP:
+    st.caption(NEXT_STEP[tier])
 
 
 # --------------------------------------------------------------------------

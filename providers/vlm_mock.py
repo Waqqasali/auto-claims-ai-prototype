@@ -204,8 +204,21 @@ class MockVLM(VLMProvider):
     name = "mock"
     is_live = False
 
+    def _script_for(self, ctx: ClaimContext):
+        """The demo script, unless the reviewer supplied their own photographs.
+
+        A script written for CLM-1002 says the evidence is insufficient. Applied
+        to a photograph the reviewer just took, that is the mock asserting
+        something about an image it never saw. Their files get the generic path,
+        so the deterministic stages still judge the real file and the scripted
+        verdict does not override them.
+        """
+        if getattr(ctx, "user_supplied_photos", False):
+            return None
+        return _SCRIPTS.get(ctx.claim_id)
+
     def assess_coverage(self, photos, ctx: ClaimContext, panel_vocabulary):
-        script = _SCRIPTS.get(ctx.claim_id)
+        script = self._script_for(ctx)
         base = dict(script["coverage"]) if script else dict(_GENERIC_COVERAGE)
 
         # Honour reality: if the actual files fail the deterministic quality
@@ -224,5 +237,5 @@ class MockVLM(VLMProvider):
         return base
 
     def assess_damage(self, photos, ctx: ClaimContext, panel_vocabulary):
-        script = _SCRIPTS.get(ctx.claim_id)
+        script = self._script_for(ctx)
         return dict(script["damage"]) if script else dict(_GENERIC_DAMAGE)

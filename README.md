@@ -41,6 +41,23 @@ streamlit run app.py
 Or copy `.env.example` to `.env` and fill in the key there. Both routes work;
 neither is required.
 
+### Uploading your own photos
+
+The sidebar uploader accepts JPG, PNG, WEBP, BMP, TIFF and GIF, plus HEIC when
+`pillow-heif` is installed, which is what an iPhone shoots by default.
+
+Your photos replace the demo set and run against the selected claim's policy,
+vehicle and loss date. The deterministic stages measure your actual files. The
+scripted assessment for that claim is **not** applied to them, because a script
+written for CLM-1002 describes photographs it has seen and yours it has not, so
+in mock mode you get a generic line item set instead. Run with
+`VLM_PROVIDER=anthropic` for a real reading.
+
+WEBP and HEIC usually arrive with EXIF stripped by the re-encode. That is not
+silently ignored: it raises an authenticity flag and lowers confidence, which is
+the intended behaviour and easy to demonstrate by uploading the same photo as a
+JPG and then as a WEBP.
+
 ### Run the tests
 
 ```bash

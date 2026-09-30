@@ -32,6 +32,11 @@ class ClaimContext:
     vehicle_year: int
     vehicle_make: str
     vehicle_model: str
+    # True when the reviewer uploaded their own photographs. The mock
+    # provider consults this: a script written for a demo claim must not
+    # be applied to a photograph it has never seen. Defaulted, so it has to
+    # come after every required field.
+    user_supplied_photos: bool = False
 
     @property
     def vehicle_label(self) -> str:
