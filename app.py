@@ -112,10 +112,16 @@ with st.sidebar:
 
     uploaded = st.file_uploader(
         "Or upload your own photos",
-        type=["jpg", "jpeg", "png"],
+        # WEBP is included because that is what browsers and messaging apps
+        # produce. It usually arrives with EXIF stripped by the re-encode,
+        # which the authenticity stage flags rather than ignores. That is the
+        # PRD's "metadata is stripped in transit" assumption, demonstrable.
+        type=["jpg", "jpeg", "png", "webp"],
         accept_multiple_files=True,
         help="Uploaded photos run through the real quality and authenticity "
-             "checks. In mock mode the damage assessment stays scripted.",
+             "checks. In mock mode the damage assessment stays scripted. "
+             "A file that reached you through a messaging app or a browser "
+             "has usually lost its EXIF, which raises an authenticity flag.",
     )
 
     st.divider()
