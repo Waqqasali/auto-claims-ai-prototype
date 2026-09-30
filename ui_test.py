@@ -32,8 +32,18 @@ for claim_id, attempt in CASES:
         fails += 1
         continue
 
-    md = " ".join(m.value for m in at.markdown)
-    tier = next((t for t in TIERS if t in md), "?")
+    # The routing banner is st.html, not st.markdown, so both have to be
+    # searched. Looking in only one is how this check silently degraded to "?"
+    # while still reporting a pass.
+    rendered = " ".join(
+        str(getattr(e, "value", "") or getattr(e, "body", ""))
+        for e in list(at.markdown) + list(at.get("html"))
+    )
+    tier = next((t for t in TIERS if t in rendered), None)
+    if tier is None:
+        print(f"[FAIL] {claim_id}/{attempt}: no routing tier rendered")
+        fails += 1
+        continue
     quiet = len(at.caption)
 
     # Rationale on: the commentary branches must render without error, and
@@ -52,8 +62,8 @@ for claim_id, attempt in CASES:
         continue
 
     print(f"[ OK ] {claim_id} att{attempt}  tier={tier:<22} "
-          f"md={len(at.markdown):<3} err={len(at.error)} warn={len(at.warning)} "
-          f"captions {quiet}->{loud}")
+          f"blocks={len(at.markdown) + len(at.get('html')):<3} "
+          f"err={len(at.error)} warn={len(at.warning)} captions {quiet}->{loud}")
 
 print("FAILURES:", fails)
 sys.exit(1 if fails else 0)

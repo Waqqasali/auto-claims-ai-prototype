@@ -38,6 +38,16 @@ st.set_page_config(
     layout="wide",
 )
 
+# Layout values the theme keys cannot reach. Kept deliberately small: these
+# selectors are Streamlit internals and are the first thing to break on a
+# version bump, so anything that can be done with a theme key is done there.
+st.html(
+    """<style>
+      [data-testid="stSidebar"] { width: 296px !important; }
+      .block-container { padding: 2rem 2.5rem 4rem; max-width: 1240px; }
+    </style>"""
+)
+
 SAMPLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "samples")
 
 # Short, specific, mutually exclusive. Free text is optional and secondary.
@@ -60,14 +70,20 @@ SCENARIO_PHOTOS = {
     "CLM-1006": ["good_a.jpg"],
 }
 
-TIER_COLOUR = {
-    "verify": "#1a7f37",
-    "starting_point": "#9a6700",
-    "low_confidence": "#bc4c00",
-    "re_request": "#0969da",
-    "escalated": "#8250df",
-    "not_processed": "#82071e",
+# (accent, tint) per routing tier. The dot and the rule carry the colour; the
+# pill carries the tint; badge text stays ink so the tier reads as a label
+# rather than as an alarm.
+TIER_STYLE = {
+    "verify":         ("#2E8B6F", "#E3F1EC"),
+    "starting_point": ("#C98A1A", "#F7ECD6"),
+    "low_confidence": ("#B33A3A", "#F5E1E1"),
+    "re_request":     ("#4A6580", "#ECF1F6"),
+    "escalated":      ("#1B3247", "#DEE5EE"),
+    "not_processed":  ("#B33A3A", "#F5E1E1"),
 }
+
+INK, MUTED, BORDER = "#0D1B2A", "#4A6580", "#DEE5EE"
+CONFIDENCE_BAR = "#4A6580"   # magnitude, never judgement. Not the orange accent.
 
 
 # --------------------------------------------------------------------------
@@ -179,17 +195,25 @@ c4.metric("ADAS data", "on file" if adas.is_known_vehicle(ctx) else "unknown veh
 
 decision = result.decision
 tier = decision.tier
-colour = TIER_COLOUR.get(tier, "#57606a")
+accent, tint = TIER_STYLE.get(tier, (MUTED, "#ECF1F6"))
 
-st.markdown(
-    f"""<div style="border-left:6px solid {colour};background:rgba(127,127,127,0.10);
-    padding:14px 18px;border-radius:6px;margin:14px 0;">
-    <div style="font-size:0.78rem;letter-spacing:0.09em;color:{colour};
-    font-weight:700;">{routing.TIER_LABELS.get(tier, tier.upper())}</div>
-    <div style="font-size:1.12rem;font-weight:600;margin-top:2px;">{decision.headline}</div>
-    <div style="font-size:0.9rem;opacity:0.85;margin-top:6px;">
-    {routing.TIER_GUIDANCE.get(tier, "")}</div></div>""",
-    unsafe_allow_html=True,
+st.html(
+    f"""<div style="background:#FFFFFF;border:1px solid {BORDER};
+    border-left:4px solid {accent};border-radius:10px;padding:20px 24px;
+    margin:16px 0 4px 0;">
+      <span style="display:inline-flex;align-items:center;gap:8px;
+      background:{tint};border-radius:999px;padding:4px 12px 4px 10px;">
+        <span style="width:8px;height:8px;border-radius:50%;
+        background:{accent};display:inline-block;"></span>
+        <span style="font-size:11px;font-weight:600;letter-spacing:0.12em;
+        color:{INK};">{routing.TIER_LABELS.get(tier, tier.upper())}</span>
+      </span>
+      <div style="font-family:'Saira',system-ui,sans-serif;font-size:24px;
+      font-weight:600;line-height:1.2;color:{INK};margin-top:12px;">
+      {decision.headline}</div>
+      <div style="font-size:13.5px;color:{MUTED};margin-top:6px;">
+      {routing.TIER_GUIDANCE.get(tier, "")}</div>
+    </div>"""
 )
 
 for reason in decision.reasons:
@@ -428,7 +452,8 @@ edited = st.data_editor(
     column_config={
         "price": st.column_config.NumberColumn("price", format="$%.2f"),
         "confidence": st.column_config.ProgressColumn(
-            "confidence", min_value=0.0, max_value=1.0, format="%.2f"
+            "confidence", min_value=0.0, max_value=1.0, format="%.2f",
+            color=CONFIDENCE_BAR,
         ),
         "priced": st.column_config.CheckboxColumn(
             "priced", disabled=True,

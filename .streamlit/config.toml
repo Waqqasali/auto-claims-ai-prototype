@@ -1,6 +1,27 @@
-# Streamlit's default primary color is alarm red (#FF4B4B), which it also
-# applies to the confidence progress bars. A claim at 0.93 confidence rendered
-# in red reads as a warning, which is the opposite of what the number means.
-# The bar shows magnitude; the routing tier carries the judgment.
+# PACT theme. Tokens from the design handoff (Innovution palette: navy, steel,
+# orange). Requires Streamlit >= 1.44 for the font, border and radius keys and
+# for the [theme.sidebar] section; verified against 1.64.
+#
+# Orange is reserved for calls to action. It is deliberately NOT used for the
+# confidence bars: Streamlit's default primary is alarm red and ProgressColumn
+# inherits primaryColor, so a line item at 0.93 would render as a warning. The
+# bars are set to steel #4A6580 explicitly in app.py, because the bar carries
+# magnitude and the routing tier carries the judgement.
+
 [theme]
-primaryColor = "#2D6A9F"
+base = "light"
+primaryColor = "#E8722A"
+backgroundColor = "#F7F9FC"
+secondaryBackgroundColor = "#ECF1F6"
+textColor = "#0D1B2A"
+borderColor = "#DEE5EE"
+showWidgetBorder = true
+baseRadius = "6px"
+baseFontSize = 14
+font = "'IBM Plex Sans':https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+headingFont = "'Saira':https://fonts.googleapis.com/css2?family=Saira:wght@500;600;700&display=swap"
+codeFont = "'IBM Plex Mono':https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap"
+
+[theme.sidebar]
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F7F9FC"
