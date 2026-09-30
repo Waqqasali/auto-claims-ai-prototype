@@ -403,6 +403,9 @@ if uploaded and not paths:
 if not paths:
     ctx_waiting = gate.load_claim_context(claim_id)
     st.markdown(f"### {claim_id} · {ctx_waiting.vehicle_label}")
+    if ctx_waiting.loss_description:
+        st.markdown(f"**Reported by the policyholder:** "
+                    f"{ctx_waiting.loss_description}")
     st.html(
         f"""<div style="background:#FFFFFF;border:1px solid {BORDER};
         border-left:4px solid #4A6580;border-radius:10px;padding:20px 24px;
@@ -540,6 +543,10 @@ c1.metric("Loss date", ctx.loss_date.strftime("%d %b %Y"))
 c2.metric("Deductible", f"${ctx.deductible:,.0f}")
 c3.metric("Photos", len(result.photos))
 c4.metric("ADAS data", "on file" if adas.is_known_vehicle(ctx) else "unknown vehicle")
+if ctx.loss_description:
+    # What the policyholder said at first notice of loss. It scopes the photo
+    # check, so the reviewer should see the same context the model was given.
+    st.markdown(f"**Reported by the policyholder:** {ctx.loss_description}")
 
 decision = result.decision
 tier = decision.tier
@@ -684,7 +691,7 @@ if result.evidence and result.evidence.status == "re_request":
         "repeated ask is where an efficiency feature destroys more value than "
         "it creates."
     )
-    st.code(result.evidence.instruction, language=None)
+    st.code(result.evidence.instruction, language=None, wrap_lines=True)
     st.info(
         "Damage assessment was NOT run. Assessing from photos already judged "
         "inadequate would produce a confident answer built on bad evidence, "

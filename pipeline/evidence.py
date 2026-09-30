@@ -18,7 +18,10 @@ Split by design:
     the frame edge" requires understanding what is in the picture
 """
 
+import re
+
 from config import (
+    MAX_PHOTOS_PER_REQUEST,
     MAX_REQUEST_ATTEMPTS,
     MAX_BRIGHTNESS,
     MIN_BRIGHTNESS,
@@ -68,6 +71,20 @@ def check_quality(photo: Photo) -> Photo:
     return photo
 
 
+def _plain_words(text: str) -> str:
+    """rear_bumper -> rear bumper. Panel identifiers are for the pipeline."""
+    return re.sub(r"\b([a-z0-9]+(?:_[a-z0-9]+)+)\b",
+                  lambda m: m.group(1).replace("_", " "), text)
+
+
+def _is_instruction(text: str) -> bool:
+    """A request a policyholder can act on. 'hood', 'front_bumper' and
+    'left_front_fender' are identifiers, not instructions: anything written
+    without a space is dropped, and so is anything under three words."""
+    raw = text.strip()
+    return " " in raw and len(_plain_words(raw).split()) >= 3
+
+
 def evaluate(
     photos: list[Photo],
     coverage: dict,
@@ -82,7 +99,20 @@ def evaluate(
         coverage_score : float       0-1
     """
     unusable = [p for p in photos if not p.quality_ok]
-    missing = list(coverage.get("missing", []))
+    # Customer-facing, so two guardrails that do not depend on the model:
+    # internal identifiers become words, and the list is capped. A model may
+    # still return front_bumper or six requests; the policyholder never sees
+    # either.
+    #
+    # A third: an entry must read as an instruction. The second live run
+    # returned the name of every panel not in view ("front_bumper", "hood",
+    # "roof" ...) for a wheel claim. A bare panel name tells a policyholder
+    # nothing, so it is dropped. If nothing actionable is left the claim goes
+    # on to assessment, and the model's own low coverage score still pulls
+    # confidence down, so a person reviews it rather than the customer being
+    # sent a list they cannot act on.
+    missing = [_plain_words(str(m)) for m in coverage.get("missing", [])
+               if _is_instruction(str(m))][:MAX_PHOTOS_PER_REQUEST]
     unfixable_key = coverage.get("unfixable") or ""
     score = float(coverage.get("coverage_score") or 0.0)
 

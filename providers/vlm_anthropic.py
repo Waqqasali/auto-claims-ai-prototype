@@ -56,23 +56,41 @@ def _encode(path: str) -> dict | None:
     }
 
 
-_COVERAGE_PROMPT = """You are assessing whether a set of vehicle damage photographs is
-SUFFICIENT to write a repair estimate. You are NOT estimating damage yet.
+_COVERAGE_PROMPT = """You are checking whether a policyholder's photographs of a
+DAMAGED AREA are enough to write the repair estimate for that area. You are
+NOT estimating damage yet, and you are NOT inspecting the whole vehicle.
 
 Vehicle: {vehicle}
 
-Valid panel names (use these exactly, no others):
+What the policyholder reported: {report}
+
+This report sets the scope. Judge the photos against the damage it describes.
+Ask about another area only if the photos themselves show damage extending
+beyond what was reported.
+
+Valid panel names (use these exactly, no others, in panels_visible only):
 {panels}
+
+The standard. Photos are sufficient when, together, they show:
+  - the whole damaged area, and where it sits on the vehicle, and
+  - the damage clearly enough to judge its type and severity.
+A wide shot plus one or two sharp close-ups usually meets it. Undamaged parts
+of the vehicle do not need photographs.
 
 Decide:
 1. Which panels are clearly visible and assessable.
-2. What specific additional photographs are needed, if any. Be concrete and
-   actionable: name the angle, the distance, and the lighting. Never write
-   "better photos" or "clearer images".
+2. Which additional photographs are NECESSARY. List a photo only if, without
+   it, you could not write the line items for the damage you can see. If the
+   photos already allow that, return an empty list, even if more views would
+   be nice to have. Never ask for photos to confirm there is no other damage.
+   Ask for at most three, most important first. Write each one as a plain
+   instruction a policyholder can follow on a phone: what to photograph, from
+   where, and in what light. Do not use the panel names above in these
+   instructions; say "the front bumper", not "front_bumper".
 3. Whether any condition makes resubmission pointless. Use one of:
    wrong_vehicle, occluded_by_object, no_light_available, vehicle_not_present,
    or an empty string if none apply.
-4. A coverage score from 0 to 1.
+4. A coverage score from 0 to 1 for the damaged area only.
 
 Return ONLY valid JSON:
 {{"panels_visible": [...], "missing": [...], "unfixable": "", "coverage_score": 0.0, "notes": ""}}"""
@@ -83,6 +101,10 @@ photographs. Be conservative: only include operations you can justify from
 what is actually visible.
 
 Vehicle: {vehicle}
+
+What the policyholder reported: {report}
+Use it to know where to look. Estimate only what the photographs show; a
+report is not evidence of damage.
 
 Valid panel names (use these exactly, no others):
 {panels}
@@ -164,6 +186,7 @@ class AnthropicVLM(VLMProvider):
         out = self._call(
             _COVERAGE_PROMPT.format(
                 vehicle=ctx.vehicle_label,
+                report=(ctx.loss_description or "No description was given."),
                 panels=", ".join(panel_vocabulary),
             ),
             photos,
@@ -179,6 +202,7 @@ class AnthropicVLM(VLMProvider):
         out = self._call(
             _DAMAGE_PROMPT.format(
                 vehicle=ctx.vehicle_label,
+                report=(ctx.loss_description or "No description was given."),
                 panels=", ".join(panel_vocabulary),
             ),
             photos,

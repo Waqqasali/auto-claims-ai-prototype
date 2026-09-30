@@ -827,6 +827,78 @@ else:
     print("[ OK ] guide    every confidence the guide quotes matches the app, "
           "in the README and the sidebar")
 
+# --------------------------------------------------------------------------
+# Re-requests stay short and readable whatever the model returns. The first
+# live run asked a policyholder for six photos, including the roof, for a
+# front corner scuff, and wrote them with internal panel identifiers.
+# --------------------------------------------------------------------------
+
+from pipeline import evidence as _evidence  # noqa: E402
+import providers.vlm_anthropic as _live  # noqa: E402
+
+_over = {"coverage_score": 0.3, "unfixable": "", "missing": [
+    "Full rear view showing rear_bumper, tailgate/trunk_lid and rear_glass",
+    "Left profile showing left_front_door", "Right profile",
+    "Close-up of right_front_wheel", "Overhead of hood and roof", "One more"]}
+_v = _evidence.evaluate([], _over, attempt=1)
+# The second live run: every panel not in view, as bare identifiers.
+_panels_only = {"coverage_score": 0.12, "unfixable": "", "missing": [
+    "front_bumper", "front_grille", "hood", "windshield", "left_front_fender",
+    "right_front_fender", "left_mirror", "right_mirror", "left_front_door",
+    "right_front_door", "left_rear_door", "right_rear_door",
+    "right_quarter_panel", "right_rocker_panel", "right_front_wheel",
+    "right_rear_wheel", "left_front_wheel", "rear_bumper", "trunk_lid",
+    "tailgate", "rear_glass", "roof"]}
+_p = _evidence.evaluate([], _panels_only, attempt=1)
+_prompt = _live._COVERAGE_PROMPT
+_rules = ["NOT inspecting the whole vehicle", "at most three",
+          "Never ask for photos to confirm there is no other damage",
+          "Do not use the panel names"]
+if len(_v.missing) > _cfg.MAX_PHOTOS_PER_REQUEST:
+    print(f"[FAIL] request: {len(_v.missing)} photos requested, cap is "
+          f"{_cfg.MAX_PHOTOS_PER_REQUEST}")
+    fails += 1
+elif "_" in _v.instruction.replace("\n", " ").split("Tips:")[0]:
+    print("[FAIL] request: internal panel identifiers reached the policyholder")
+    fails += 1
+elif _p.missing or _p.status != "sufficient":
+    print(f"[FAIL] request: bare panel names became a request "
+          f"({_p.status}, {_p.missing[:3]})")
+    fails += 1
+elif [r for r in _rules if r not in _prompt]:
+    print(f"[FAIL] request: live coverage instructions lost "
+          f"{[r for r in _rules if r not in _prompt]}")
+    fails += 1
+else:
+    print(f"[ OK ] request  capped at {_cfg.MAX_PHOTOS_PER_REQUEST} photos, "
+          f"plain words, bare panel names dropped, live instructions scoped "
+          f"to the damaged area")
+
+# --------------------------------------------------------------------------
+# Every claim carries the policyholder's report, it reaches both live
+# prompts, and the reviewer sees it on screen.
+# --------------------------------------------------------------------------
+
+from pipeline import gate as _gate  # noqa: E402
+
+_no_report = [cid for cid, _ in _gate.list_claims()
+              if not _gate.load_claim_context(cid).loss_description]
+at = AppTest.from_file("app.py", default_timeout=120).run()
+at.sidebar.selectbox[0].set_value("CLM-1002").run()
+_seen = " ".join(str(m.value) for m in at.markdown)
+if _no_report:
+    print(f"[FAIL] report: no policyholder report on {_no_report}")
+    fails += 1
+elif "{report}" not in _live._COVERAGE_PROMPT or "{report}" not in _live._DAMAGE_PROMPT:
+    print("[FAIL] report: the live prompts do not receive the report")
+    fails += 1
+elif "Reported by the policyholder" not in _seen:
+    print("[FAIL] report: the report is not shown to the reviewer")
+    fails += 1
+else:
+    print("[ OK ] report   every claim has a policyholder report; it scopes "
+          "both live prompts and is shown on screen")
+
 # A good score must not be unconditional: bad files still fail the checks.
 _bad = _run.run("CLM-1002", ["samples/bad_blurry.jpg", "samples/bad_dark.jpg"],
                 attempt=2, user_photos=True)

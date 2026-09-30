@@ -53,6 +53,11 @@ MIN_LONG_EDGE_PX = 800      # smaller than this loses the detail we need
 
 # --- Stage 1: re-request loop ----------------------------------------------
 MAX_REQUEST_ATTEMPTS = 2    # after this, a human takes over
+# The most photographs one request may ask a policyholder for, whatever the
+# model returns. The first live run asked for six, including an overhead shot
+# of the roof for a front corner scuff. A long list is the vague, repeated
+# request that drives customers away, so the cap is policy, not model output.
+MAX_PHOTOS_PER_REQUEST = 3
 
 # --- Stage 1: authenticity --------------------------------------------------
 # How far a photo's capture time may sit from the reported loss date before

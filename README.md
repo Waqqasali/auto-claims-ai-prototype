@@ -85,6 +85,11 @@ streamlit run app.py
 Or copy `.env.example` to `.env` and fill in the key there. Both routes work;
 neither is required.
 
+Each claim carries the policyholder's own report from first notice of loss:
+what happened and where. In live mode it sets the scope of the photo check, so
+a wheel claim is judged on photos of the wheel, not on a walk-around of the
+whole vehicle, and requests stay limited to what the reported damage needs.
+
 If the API answers that the key "is not scoped to a workspace", the key can
 reach more than one workspace in your Claude Console organization. Either set
 `ANTHROPIC_WORKSPACE_ID` (it starts with `wrkspc_` and is listed at
@@ -211,7 +216,7 @@ inside a carrier: pricing, historical comparables and the policy system.
 | EXIF extraction and consistency | **Real** | Capture time against loss date, device, editing-software signatures. |
 | C2PA presence check | **Real, limited** | Detects a JUMBF/C2PA box. Does **not** cryptographically validate the manifest against a trust list — that needs the `c2pa` library and a trust anchor. |
 | Perceptual hashing | **Real** | Catches the same image reused across claims. |
-| Evidence sufficiency logic | **Real** | Attempt cap, bail-out conditions, instruction generation. |
+| Evidence sufficiency logic | **Real** | Attempt cap, bail-out conditions, instruction generation, and at most three photos per request in plain words, whatever the model returns. |
 | ADAS zone intersection | **Real logic, thin data** | Seven vehicles hand-entered. Production uses licensed reference data. |
 | Confidence arithmetic | **Real** | Deterministic, auditable, in `pipeline/confidence.py`. |
 | Routing and tiering | **Real** | Deterministic. |

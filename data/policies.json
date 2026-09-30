@@ -4,6 +4,7 @@
     "CLM-1001": {
       "_scenario": "Clean path, real photographs. Front corner damage on a panel carrying no sensors. Expect: verify tier.",
       "loss_date": "2026-09-20",
+      "loss_description": "Scraped a concrete pillar while turning into a parking garage at low speed. The front bumper on the driver's side corner is creased and pulled away below the headlight.",
       "policy_in_force": true,
       "coverage_applies": true,
       "deductible": 500.0,
@@ -19,6 +20,7 @@
     "CLM-1002": {
       "_scenario": "Insufficient evidence. Attempt 1: a specific re-request naming three views. Attempt 2 waits for the resubmission: upload the three Navigator photos from the samples folder and it proceeds to an estimate; upload fewer, or poor ones, and it escalates to a claims agent at the attempt cap.",
       "loss_date": "2026-09-20",
+      "loss_description": "Scraped the rear wheel on the driver's side against a curb while parallel parking. The rim is gouged along its outer edge.",
       "policy_in_force": true,
       "coverage_applies": true,
       "deductible": 1000.0,
@@ -34,6 +36,7 @@
     "CLM-1003": {
       "_scenario": "The surprise. Rear bumper scuff on a sensor-equipped sedan — looks trivially automatable, is not. Expect: ADAS penalty drops it to starting_point.",
       "loss_date": "2026-09-18",
+      "loss_description": "Backed into a low post in a parking lot. The rear bumper is scuffed and gouged across the middle.",
       "policy_in_force": true,
       "coverage_applies": true,
       "deductible": 500.0,
@@ -49,6 +52,7 @@
     "CLM-1004": {
       "_scenario": "Authenticity flag. Photo capture time predates the reported loss. Expect: flagged, confidence reduced, routed for review. NOT denied.",
       "loss_date": "2026-09-22",
+      "loss_description": "Sideswiped by a delivery van while parked on the street. There is a crease along the passenger side front fender and door.",
       "policy_in_force": true,
       "coverage_applies": true,
       "deductible": 500.0,
@@ -64,6 +68,7 @@
     "CLM-1005": {
       "_scenario": "Tier 1 exclusion: injury reported. Expect: not processed.",
       "loss_date": "2026-09-19",
+      "loss_description": "Rear-ended at a stop light. The driver reports neck pain.",
       "policy_in_force": true,
       "coverage_applies": true,
       "deductible": 500.0,
@@ -79,6 +84,7 @@
     "CLM-1006": {
       "_scenario": "Tier 1 exclusion: policy not in force at loss date. Expect: not processed, no compute spent.",
       "loss_date": "2026-09-11",
+      "loss_description": "A shopping cart rolled into the driver's door in a store parking lot.",
       "policy_in_force": false,
       "coverage_applies": false,
       "deductible": 500.0,
@@ -94,6 +100,7 @@
     "CLM-1007": {
       "_scenario": "Low confidence, honestly reached. Side-swipe down the left side into the rear bumper corner. Photographs are adequate; the damage is not. Structural lines the model cannot judge from outside, one line the costing stage cannot price, sparse comparables, and a blind spot radar in the damaged corner. Expect: low confidence tier.",
       "loss_date": "2026-09-24",
+      "loss_description": "Sideswiped by a car changing lanes on the highway. Scrapes and dents run along the driver's side from the rear door to the back bumper.",
       "policy_in_force": true,
       "coverage_applies": true,
       "deductible": 500.0,

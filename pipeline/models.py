@@ -40,6 +40,10 @@ class ClaimContext:
     # Which submission this is. The mock consults it so a claim can behave
     # differently on a resubmission, which is what the re-request loop is for.
     attempt: int = 1
+    # What the policyholder said happened and where, at first notice of loss.
+    # It sets the scope of the photo check: the photographs are judged against
+    # the reported damage, not against the whole vehicle.
+    loss_description: str = ""
 
     @property
     def vehicle_label(self) -> str:

@@ -44,6 +44,7 @@ def load_claim_context(claim_id: str) -> ClaimContext:
         vehicle_year=record["vehicle_year"],
         vehicle_make=record["vehicle_make"],
         vehicle_model=record["vehicle_model"],
+        loss_description=record.get("loss_description", ""),
     )
 
 
