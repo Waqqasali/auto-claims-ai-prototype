@@ -61,6 +61,18 @@ REASON_CODES = [
     "not repairable as written",
 ]
 
+# Why a whole draft is not salvageable. Distinct from the line-level codes:
+# those say a row is wrong, these say correcting rows would not fix it.
+REJECTION_REASONS = [
+    "evidence inadequate for assessment",
+    "wrong vehicle or panels identified",
+    "damage pattern inconsistent with the photographs",
+    "too many line-level errors to correct",
+    "scope fundamentally wrong",
+    "requires physical or specialist inspection",
+    "refer to Special Investigation Unit",
+]
+
 SCENARIO_PHOTOS = {
     "CLM-1001": ["good_a.jpg", "good_b.jpg", "good_c.jpg"],
     "CLM-1002": ["bad_blurry.jpg", "bad_dark.jpg", "bad_lowres.jpg"],
@@ -112,6 +124,10 @@ with st.sidebar:
 
     uploaded = st.file_uploader(
         "Or upload your own photos",
+        # Keyed on the claim, so switching claims clears the uploader instead
+        # of silently re-attaching one claim's photographs to another. Evidence
+        # belongs to the claim it was submitted against.
+        key=f"upload::{claim_id}",
         # Whatever Pillow can read in this install, including HEIC when
         # pillow-heif is present. WEBP and HEIC usually arrive with EXIF
         # stripped, which the authenticity stage flags rather than ignores.
@@ -500,7 +516,10 @@ edited = st.data_editor(
         ),
         "panel": st.column_config.TextColumn("panel", disabled=True),
     },
-    num_rows="fixed",
+    # Dynamic, not fixed. Two of the seven reason codes are "missed damage"
+    # and "over-scoped", which are meaningless if the reviewer cannot add a
+    # line the system missed or delete one it invented.
+    num_rows="dynamic",
 )
 
 with st.expander("Why the model proposed each line"):
@@ -515,24 +534,65 @@ with st.expander("Why the model proposed each line"):
     )
 
 # --- Detect changes ------------------------------------------------------
+# Read the editor's own delta rather than diffing dataframes. Once rows can be
+# added and deleted, positional comparison stops being meaningful: deleting
+# row 1 shifts everything below it and every subsequent row reads as edited.
+delta = st.session_state.get(state_key, {}) or {}
+
+
+def _describe(row) -> str:
+    return f"{row.get('operation', '?')} {row.get('part', '?')}".strip()
+
+
 changes = []
-for idx in range(len(original)):
-    for col in ("operation", "part", "severity", "price"):
-        before, after = original.at[idx, col], edited.at[idx, col]
+
+for idx, fields in (delta.get("edited_rows") or {}).items():
+    idx = int(idx)
+    if idx >= len(original):
+        continue
+    for col, after in fields.items():
+        if col not in ("operation", "part", "severity", "price"):
+            continue
+        before = original.at[idx, col]
         if isinstance(before, float) or isinstance(after, float):
-            differs = abs(float(before) - float(after)) > 0.005
-        else:
-            differs = str(before) != str(after)
-        if differs:
-            changes.append(
-                {
-                    "row": idx,
-                    "line": f"{original.at[idx, 'operation']} {original.at[idx, 'part']}",
-                    "field": col,
-                    "before": before,
-                    "after": after,
-                }
-            )
+            try:
+                if abs(float(before) - float(after)) <= 0.005:
+                    continue
+            except (TypeError, ValueError):
+                pass
+        elif str(before) == str(after):
+            continue
+        changes.append({
+            "row": idx, "kind": "edited",
+            "line": _describe(original.iloc[idx]),
+            "field": col, "before": before, "after": after,
+        })
+
+for row in (delta.get("added_rows") or []):
+    label = _describe(row) or "new line item"
+    changes.append({
+        "row": None, "kind": "added", "line": label,
+        "field": "line item", "before": "—", "after": label,
+    })
+
+for idx in (delta.get("deleted_rows") or []):
+    idx = int(idx)
+    if idx >= len(original):
+        continue
+    label = _describe(original.iloc[idx])
+    changes.append({
+        "row": idx, "kind": "removed", "line": label,
+        "field": "line item", "before": label, "after": "—",
+    })
+
+if changes:
+    revised = float(pd.to_numeric(edited["price"], errors="coerce").fillna(0).sum())
+    delta_total = revised - assessment.estimate_total
+    st.caption(
+        f"Revised total **\\${revised:,.2f}** "
+        f"({'+' if delta_total >= 0 else '−'}\\${abs(delta_total):,.2f} "
+        f"against the draft). Pricing is stubbed — totals are illustrative."
+    )
 
 st.markdown("#### Reviewer decision")
 
@@ -544,30 +604,70 @@ if changes:
         "evidence base for removing this gate later."
     )
 
-with st.form("override_form"):
-    reasons = {}
-    for i, ch in enumerate(changes):
-        col_a, col_b = st.columns([2, 1])
-        with col_a:
+# Deliberately not an st.form. A form defers reruns, so the rejection reason
+# could not appear when the outcome changes and the button could not report
+# what is still missing. The whole point of this surface is that the reviewer
+# cannot record a decision without saying why.
+reasons = {}
+for i, ch in enumerate(changes):
+    col_a, col_b = st.columns([2, 1])
+    with col_a:
+        if ch["kind"] == "added":
+            st.markdown(f"**Added** · `{ch['line']}`")
+        elif ch["kind"] == "removed":
+            st.markdown(f"**Removed** · `{ch['line']}`")
+        else:
             st.markdown(
                 f"`{ch['line']}` · **{ch['field']}** "
                 f"`{ch['before']}` → `{ch['after']}`"
             )
-        with col_b:
-            reasons[i] = st.selectbox(
-                "reason", REASON_CODES, key=f"reason_{state_key}_{i}",
-                label_visibility="collapsed",
-            )
+    with col_b:
+        # index=None: a code the reviewer never chose is not a reason.
+        reasons[i] = st.selectbox(
+            "reason", REASON_CODES, key=f"reason_{state_key}_{i}",
+            index=None, placeholder="Choose a reason code",
+            label_visibility="collapsed",
+        )
 
-    note = st.text_area(
-        "Optional note", placeholder="Anything the reason codes do not capture",
-        height=68,
+action = st.radio(
+    "Outcome", ["Approve as reviewed", "Approve with changes", "Reject and rebuild"],
+    horizontal=True, index=None, key=f"outcome_{state_key}",
+)
+
+rejection_reason = None
+if action == "Reject and rebuild":
+    rejection_reason = st.selectbox(
+        "Reason for rejecting the draft", REJECTION_REASONS,
+        key=f"reject_{state_key}", index=None,
+        placeholder="Choose a rejection reason",
+        help="Rejecting a whole draft is a stronger signal than correcting "
+             "a line, and it is the one the model most needs back.",
     )
-    action = st.radio(
-        "Outcome", ["Approve as reviewed", "Approve with changes", "Reject and rebuild"],
-        horizontal=True,
+
+note = st.text_area(
+    "Optional note", placeholder="Anything the reason codes do not capture",
+    height=68, key=f"note_{state_key}",
+)
+
+# What is still missing, in the order a reviewer would hit it.
+missing = []
+if action is None:
+    missing.append("choose an outcome")
+if action == "Reject and rebuild" and not rejection_reason:
+    missing.append("choose a rejection reason")
+unjustified = [i for i in range(len(changes)) if not reasons.get(i)]
+if unjustified:
+    missing.append(
+        f"give a reason code for {len(unjustified)} change(s)"
     )
-    submitted = st.form_submit_button("Record decision", type="primary")
+
+if missing:
+    st.caption("To record: " + ", then ".join(missing) + ".")
+
+submitted = st.button(
+    "Record decision", type="primary", disabled=bool(missing),
+    key=f"record_{state_key}",
+)
 
 if submitted:
     os.makedirs(RUNTIME_DIR, exist_ok=True)
@@ -581,6 +681,7 @@ if submitted:
         "routing_tier": tier,
         "adas_involved": assessment.adas_zones_involved,
         "action": action,
+        "rejection_reason": rejection_reason,
         "note": note,
         "overrides": [
             {**ch, "before": str(ch["before"]), "after": str(ch["after"]),
