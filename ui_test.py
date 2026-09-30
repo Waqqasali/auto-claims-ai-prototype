@@ -1054,6 +1054,11 @@ for cid in ("CLM-1003", "CLM-1004", "CLM-1007", "CLM-1001"):
     txt = " ".join(str(getattr(e, "value", "") or getattr(e, "body", ""))
                    for e in list(at.info) + list(at.get("html")))
     out.append(f"{cid}|{len(calls)}|{'Mock data for this claim' in txt}")
+    # The sidebar must name the provider this claim uses, not the app setting.
+    prov = [m.value for m in at.sidebar.metric if m.label == "Vision provider"]
+    note = any("This claim always uses mock data" in c.value
+               for c in at.sidebar.caption)
+    out.append(f"provider-{cid}|{'|'.join(prov)}|{note}")
 opts = at.sidebar.selectbox[0].options
 out.append("labels|" + "|".join(opts))
 print("RESULT " + ";".join(out))
@@ -1073,6 +1078,11 @@ else:
     _labels = _parts["labels"]
     _labels_ok = (any(l.startswith("CLM-1001") and "live model" in l for l in _labels)
                   and any(l.startswith("CLM-1003") and "mock data" in l for l in _labels))
+    _prov = {c: _parts.get(f"provider-{c}")
+             for c in ("CLM-1001", "CLM-1003", "CLM-1004", "CLM-1007")}
+    _prov_ok = (_prov["CLM-1001"] == ["ANTHROPIC", "False"]
+                and all(_prov[c] == ["MOCK", "True"]
+                        for c in ("CLM-1003", "CLM-1004", "CLM-1007")))
     if _bad:
         print(f"[FAIL] live mode: {_bad} reached the model or lacked the mock "
               f"label: {[_parts[c] for c in _bad]}")
@@ -1083,9 +1093,13 @@ else:
     elif not _labels_ok:
         print(f"[FAIL] live mode: claim dropdown labels {_labels}")
         fails += 1
+    elif not _prov_ok:
+        print(f"[FAIL] live mode: sidebar vision provider {_prov}")
+        fails += 1
     else:
         print("[ OK ] live mode  CLM-1003, 1004 and 1007 use mock data (no model "
-              "call, labeled); CLM-1001 reaches the model; dropdown says which")
+              "call, labeled, sidebar says MOCK); CLM-1001 reaches the model; "
+              "dropdown says which")
 
 # A good score must not be unconditional: bad files still fail the checks.
 _bad = _run.run("CLM-1002", ["samples/bad_blurry.jpg", "samples/bad_dark.jpg"],

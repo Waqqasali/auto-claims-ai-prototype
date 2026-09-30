@@ -1,4 +1,4 @@
-# AI Assisted Damage Assessment and Claim Triage
+# PACT AI: Photo Assessment and Claim Triage
 
 [![tests](https://github.com/Waqqasali/auto-claims-ai-prototype/actions/workflows/ci.yml/badge.svg)](https://github.com/Waqqasali/auto-claims-ai-prototype/actions/workflows/ci.yml)
 
@@ -17,12 +17,24 @@ confidence score that drives routing.
 
 ---
 
+## Try it online
+
+Open **[pact-ai.streamlit.app](https://pact-ai.streamlit.app)**. Nothing to
+install.
+
+The hosted copy runs in live mode for CLM-1001 and CLM-1002, the two claims
+with real photographs: the model reads their photos and writes the line items.
+Every other claim uses its mock data and says so, on screen and in the claim
+list. The first look at a live claim can take 10 to 20 seconds while the model
+reads the photographs. After that, the same photos load instantly.
+
 ## Try it in five minutes
 
-Pick claims from the sidebar. Each step says what you should see in the
-default mock mode. In live mode the model reads CLM-1001 and CLM-1002, so
-their line items and scores can differ; every other claim always uses its mock
-data and gives the numbers below.
+Pick claims from the sidebar. The numbers below are what mock mode produces,
+and a test checks them against the app. On the hosted link, CLM-1001 and
+CLM-1002 are read by the model, so their line items and scores can differ from
+this guide. Every other claim matches it exactly. Run locally in mock mode, the
+default, and every number matches.
 
 1. **A clean claim.** Open CLM-1001 (Mazda 6, real photographs). It routes to
    **Verify** at 0.94. Open "Why the model proposed each line", then hover the
@@ -53,15 +65,16 @@ the screen works the way it does.
 
 Worth knowing before you upload your own photos:
 
-- In mock mode, the default, the damage line items come from each claim's
-  script, and the screen says so. In live mode that stays true on every claim
-  except CLM-1001 and CLM-1002. Quality, date, reuse and confidence checks
-  measure your actual file.
+- On the hosted link the model reads your uploads on CLM-1001 and CLM-1002.
+  On every other claim, and on every claim in mock mode (the local default),
+  the damage line items come from the claim's script, and the screen says so.
+  Quality, date, reuse and confidence checks measure your actual file in every
+  mode.
 - The claims' loss dates are in September 2026, so a photo taken today is
   flagged as outside the 14-day capture window, and a screenshot or a photo sent
   through a messaging app has lost its date. Both are the checks working.
-- Everyone using a hosted copy shares one override log, and **Reset demo data**
-  clears it for everyone.
+- Everyone on the hosted link shares one override log and one photo reuse
+  ledger, and **Reset demo data** clears both for everyone.
 
 ## Run it
 
@@ -164,7 +177,8 @@ python ui_test.py       # exercises the Streamlit script for every scenario
 ```
 
 Both write to a temporary folder, never to `runtime/`, so running them does not
-touch your demo data.
+touch your demo data. Both also force mock mode, so a `.env` set up for live
+mode makes no API calls.
 
 ---
 
@@ -176,7 +190,7 @@ Seven claims are pre-loaded, and between them every routing tier is reachable. P
 |---|---|---|
 | **CLM-1001** | 2021 Mazda 6, front corner damage. **Real photographs.** Damaged panels carry no sensors on this vehicle | `VERIFY` at 0.94, three line items. The blend line is the weakest but is excluded from the floor, because it paints an undamaged panel |
 | **CLM-1002** attempt 1 | 2020 Lincoln Navigator, curbed alloy wheel. The first submission: blurred, too dark and too small | `MORE PHOTOS NEEDED` — three specific angles requested |
-| **CLM-1002** attempt 2 | Awaiting the resubmission. Upload `samples/navigator_wheel_*.jpg` | Assessment, estimate, and four risks the photos cannot resolve |
+| **CLM-1002** attempt 2 | Awaiting the resubmission. Press **Use the sample resubmission photos**, or upload `samples/navigator_wheel_*.jpg` | Assessment, estimate, and four risks the photos cannot resolve |
 | **CLM-1003** | 2021 Toyota Camry, rear bumper scuff | `STARTING POINT` at 0.60 |
 | **CLM-1004** | Photo EXIF timestamp predates the reported loss | `STARTING POINT`, authenticity flag raised, **not denied** |
 | **CLM-1005** | Bodily injury reported | `NOT PROCESSED` |
@@ -205,8 +219,8 @@ with those four risks named rather than priced. Charging for them on suspicion
 would overstate the claim; ignoring them is how a supplement gets written later.
 
 In mock mode the two wheel line items come from the claim's script and the
-screen says so. Run with `VLM_PROVIDER=anthropic` to have the model actually
-read the photographs.
+screen says so. Run with `VLM_PROVIDER=anthropic`, or use the hosted link, to
+have the model actually read the photographs.
 
 ### Start with CLM-1003
 

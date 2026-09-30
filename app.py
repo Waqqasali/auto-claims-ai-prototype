@@ -40,7 +40,7 @@ from config import (
 from pipeline import adas, comparables, gate, imaging, pricing, routing, run
 
 st.set_page_config(
-    page_title="AI Assisted Damage Assessment and Claim Triage",
+    page_title="PACT AI",
     page_icon="🚗",
     layout="wide",
 )
@@ -236,7 +236,8 @@ HELP_LINE_CONFIDENCE_COLUMN = (
 # --------------------------------------------------------------------------
 
 with st.sidebar:
-    st.title("Damage Assessment and Claim Triage")
+    st.title("PACT AI")
+    st.markdown("**Photo Assessment and Claim Triage**")
     st.caption("AI assisted assessment and routing, between damage "
                "documentation and estimate approval.")
 
@@ -258,8 +259,9 @@ with st.sidebar:
             "Nothing records without a reason code."
         )
         st.caption(
-            "Numbers are for mock mode. In live mode the model reads CLM-1001 "
-            "and CLM-1002, so theirs can vary; the others always use mock data. "
+            "Numbers are from mock mode. In live mode, as on the hosted link, "
+            "the model reads CLM-1001 and CLM-1002, so their line items and "
+            "scores can differ; every other claim matches exactly. "
             "Then try to break it: a blurry photo, a screenshot, a file that is "
             "not an image, or the same photo on two claims. In mock mode the "
             "line items are scripted. Loss dates are in September 2026, so a "
@@ -324,7 +326,12 @@ with st.sidebar:
 
     st.divider()
     live = VLM_PROVIDER == "anthropic"
-    st.metric("Vision provider", VLM_PROVIDER.upper())
+    # The provider this claim uses, not the app-wide setting. The setting read
+    # ANTHROPIC on claims that never reach the model.
+    st.metric("Vision provider", provider_for_claim(claim_id).upper())
+    if live and provider_for_claim(claim_id) == "mock":
+        st.caption("This claim always uses mock data. Live mode is set up for "
+                   f"{' and '.join(LIVE_MODEL_CLAIMS)}.")
     if live:
         st.success(f"Live model calls on {' and '.join(LIVE_MODEL_CLAIMS)}. "
                    "Every other claim uses its mock data.", icon="🟢")
