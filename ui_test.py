@@ -12,7 +12,9 @@ import sys
 
 from streamlit.testing.v1 import AppTest
 
-CASES = [("CLM-1001", 1), ("CLM-1002", 1), ("CLM-1002", 2), ("CLM-1003", 1),
+# CLM-1002 attempt 2 is deliberately absent: it is a claim awaiting evidence,
+# so it has no routing tier. It has its own assertion further down.
+CASES = [("CLM-1001", 1), ("CLM-1002", 1), ("CLM-1003", 1),
          ("CLM-1004", 1), ("CLM-1005", 1), ("CLM-1006", 1)]
 TIERS = ["VERIFY", "STARTING POINT", "LOW CONFIDENCE", "MORE PHOTOS NEEDED",
          "ESCALATED TO AGENT", "NOT PROCESSED"]
@@ -65,6 +67,32 @@ for claim_id, attempt in CASES:
     print(f"[ OK ] {claim_id} att{attempt}  tier={tier:<22} "
           f"blocks={len(at.markdown) + len(at.get('html')):<3} "
           f"err={len(at.error)} warn={len(at.warning)} captions {quiet}->{loud}")
+
+
+# --------------------------------------------------------------------------
+# A claim awaiting a resubmission renders a waiting state, not an assessment
+# and not an error. Nothing should be assessed before evidence arrives.
+# --------------------------------------------------------------------------
+
+at = AppTest.from_file("app.py", default_timeout=120).run()
+at.sidebar.selectbox[0].set_value("CLM-1002").run()
+at.sidebar.radio[0].set_value(2).run()
+if at.exception:
+    print(f"[FAIL] awaiting: {[e.message for e in at.exception]}")
+    fails += 1
+else:
+    shown = " ".join(
+        str(getattr(e, "value", "") or getattr(e, "body", ""))
+        for e in list(at.markdown) + list(at.get("html")) + list(at.caption)
+    )
+    if "AWAITING RESUBMISSION" not in shown:
+        print("[FAIL] awaiting: CLM-1002 attempt 2 did not render the waiting state")
+        fails += 1
+    elif any(t in shown for t in ("VERIFY", "STARTING POINT", "LOW CONFIDENCE")):
+        print("[FAIL] awaiting: assessed a claim with no evidence")
+        fails += 1
+    else:
+        print("[ OK ] awaiting resubmission     no assessment without evidence")
 
 
 # --------------------------------------------------------------------------

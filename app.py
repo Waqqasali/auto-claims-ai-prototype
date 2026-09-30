@@ -79,9 +79,9 @@ REJECTION_REASONS = [
 SCENARIO_PHOTOS = {
     ("CLM-1001", 1): ["mazda6_front.jpg", "mazda6_corner.jpg", "mazda6_damage.jpg"],
     ("CLM-1002", 1): ["bad_blurry.jpg", "bad_dark.jpg", "bad_lowres.jpg"],
-    ("CLM-1002", 2): ["navigator_wheel_closeup.jpg",
-                      "navigator_wheel_angle.jpg",
-                      "navigator_wheel_context.jpg"],
+    # Deliberately empty. The re-request has gone out and nothing has come
+    # back yet, so the claim sits in a waiting state until photos are uploaded.
+    ("CLM-1002", 2): [],
     ("CLM-1003", 1): ["bumper_a.jpg", "bumper_b.jpg", "bumper_c.jpg"],
     ("CLM-1004", 1): ["stale_timestamp.jpg", "stale_timestamp_2.jpg"],
     ("CLM-1005", 1): ["good_a.jpg"],
@@ -90,10 +90,16 @@ SCENARIO_PHOTOS = {
 
 
 def photos_for(claim_id: str, attempt: int) -> list[str]:
-    """Photos for this attempt, falling back to the first submission."""
-    return SCENARIO_PHOTOS.get((claim_id, attempt)) or SCENARIO_PHOTOS.get(
-        (claim_id, 1), []
-    )
+    """Photos for this attempt.
+
+    An attempt listed with no photographs is a claim awaiting a resubmission,
+    which is different from an attempt nobody specified. Only the latter falls
+    back to the first submission.
+    """
+    key = (claim_id, attempt)
+    if key in SCENARIO_PHOTOS:
+        return SCENARIO_PHOTOS[key]
+    return SCENARIO_PHOTOS.get((claim_id, 1), [])
 
 # (accent, tint) per routing tier. The dot and the rule carry the colour; the
 # pill carries the tint; badge text stays ink so the tier reads as a label
@@ -208,7 +214,39 @@ else:
     paths = [os.path.join(SAMPLES, n) for n in photos_for(claim_id, attempt)]
 
 if not paths:
-    st.warning("No photos for this claim. Upload some in the sidebar.")
+    ctx_waiting = gate.load_claim_context(claim_id)
+    st.markdown(f"### {claim_id} · {ctx_waiting.vehicle_label}")
+    st.html(
+        f"""<div style="background:#FFFFFF;border:1px solid {BORDER};
+        border-left:4px solid #4A6580;border-radius:10px;padding:20px 24px;
+        margin:16px 0 4px 0;">
+          <span style="display:inline-flex;align-items:center;gap:8px;
+          background:#ECF1F6;border-radius:999px;padding:4px 12px 4px 10px;">
+            <span style="width:8px;height:8px;border-radius:50%;
+            background:#4A6580;display:inline-block;"></span>
+            <span style="font-size:11px;font-weight:600;letter-spacing:0.12em;
+            color:{INK};">AWAITING RESUBMISSION</span>
+          </span>
+          <div style="font-family:'Saira',system-ui,sans-serif;font-size:24px;
+          font-weight:600;line-height:1.2;color:{INK};margin-top:12px;">
+          Attempt {attempt} of {MAX_REQUEST_ATTEMPTS}, nothing received yet</div>
+          <div style="font-size:13.5px;color:{MUTED};margin-top:6px;">
+          A specific request went to the policyholder on attempt
+          {attempt - 1}. No assessment runs until photographs come back.</div>
+        </div>"""
+    )
+    st.caption(
+        "**Next:** upload the resubmitted photographs in the sidebar. They run "
+        "through the same pipeline: quality, authenticity, assessment, "
+        "confidence and routing."
+    )
+    if VLM_PROVIDER != "anthropic":
+        st.info(
+            "Mock mode returns generic line items for photographs it has never "
+            "seen, which is deliberate. Set `VLM_PROVIDER=anthropic` to have "
+            "the model actually read them.",
+            icon="🟡",
+        )
     st.stop()
 
 result = run.run(

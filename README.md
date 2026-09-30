@@ -75,7 +75,7 @@ Six claims are pre-loaded. Pick them from the sidebar.
 |---|---|---|
 | **CLM-1001** | 2021 Mazda 6, front corner damage. **Real photographs.** Damaged panels carry no sensors on this vehicle | `VERIFY` at 0.92, three line items |
 | **CLM-1002** attempt 1 | 2020 Lincoln Navigator, kerbed alloy wheel. Blurry, dark and low-resolution photos | `MORE PHOTOS NEEDED` — three specific angles requested |
-| **CLM-1002** attempt 2 | **Real photographs** answering that request | `VERIFY` at 0.93, with four risks the photos cannot resolve |
+| **CLM-1002** attempt 2 | Awaiting the resubmission. Upload `samples/navigator_wheel_*.jpg` | Assessment, estimate, and four risks the photos cannot resolve |
 | **CLM-1003** | 2021 Toyota Camry, rear bumper scuff | `STARTING POINT` at 0.60 |
 | **CLM-1004** | Photo EXIF timestamp predates the reported loss | `STARTING POINT`, authenticity flag raised, **not denied** |
 | **CLM-1005** | Bodily injury reported | `NOT PROCESSED` |
@@ -87,8 +87,13 @@ CLM-1002 refuses and names three angles: the rim face, the sidewall alongside
 the damage, and a step back showing which corner. Attempt 2 supplies them and
 the claim proceeds to an estimate.
 
+Attempt 2 starts empty on purpose: the request has gone out and nothing has
+come back, so the claim sits in a waiting state and nothing is assessed. Upload
+the three files in `samples/navigator_wheel_*.jpg`, or your own, and the claim
+proceeds.
+
 It is the clearest case in the set for what this product is actually about.
-The visible damage is cosmetic and the system is confident about it, 0.93. But
+The visible damage is cosmetic and the system is confident about it. But
 a kerb strike hard enough to gouge the lip may also have bent the inboard
 flange, pinched the inner sidewall, disturbed the alignment or killed the TPMS
 sensor, and **none of that is visible in a photograph**. So the estimate comes
