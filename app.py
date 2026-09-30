@@ -179,10 +179,10 @@ HELP_CROSS_STAGE_AGREEMENT = (
     "An item that cannot be priced has two possible causes. The damage stage "
     "may have named something the costing stage does not recognize, which is "
     "a stronger warning than either stage reporting low confidence on its "
-    "own. Or the price catalogue has a gap. Either way the total is "
+    "own. Or the price catalog has a gap. Either way the total is "
     "incomplete.\n\n"
-    "Against a complete production catalogue the first cause dominates. "
-    "Against the stub catalogue in this build, gaps are more likely."
+    "Against a complete production catalog the first cause dominates. "
+    "Against the stub catalog in this build, gaps are more likely."
 )
 
 HELP_PENALTIES = (

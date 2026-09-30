@@ -61,10 +61,10 @@ def price_all(items: list[LineItem]) -> list[LineItem]:
 def agreement_score(items: list[LineItem]) -> float:
     """Cross-stage agreement: what share of identified line items could be priced?
 
-    Against a complete production catalogue, an item the pricing stage cannot
+    Against a complete production catalog, an item the pricing stage cannot
     resolve means the assessment stage produced an operation or panel
     combination outside the expected vocabulary, which is a reason to trust the
-    whole assessment less. Against this stub catalogue it can also be a simple
+    whole assessment less. Against this stub catalog it can also be a simple
     gap: CLM-1007's rocker panel repair is one, since the stub carries no rocker
     operations while real estimating databases do. Either way the total is
     incomplete, and the score says so.
