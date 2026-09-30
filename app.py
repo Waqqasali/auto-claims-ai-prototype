@@ -15,6 +15,7 @@ In the MVP every claim that clears the Tier 1 gate lands here. Nothing is
 auto-approved.
 """
 
+import hashlib
 import json
 import os
 import shutil
@@ -881,10 +882,21 @@ for idx, fields in (delta.get("edited_rows") or {}).items():
             "field": col, "before": before, "after": after,
         })
 
-for j, row in enumerate(delta.get("added_rows") or []):
+# Added rows carry no stable id in the editor's delta, and their position
+# shifts when an earlier added row is deleted, which moved a code onto the
+# wrong line. They are keyed by their content instead, with an occurrence
+# count for identical rows. Editing an added row after coding it clears its
+# code, and asking again is right: the change being justified has changed.
+_seen_added: dict[str, int] = {}
+for row in (delta.get("added_rows") or []):
     label = _describe(row)
+    _content = "|".join(str(row.get(k, "")) for k in
+                        ("operation", "part", "panel", "severity", "price"))
+    _digest = hashlib.md5(_content.encode("utf-8")).hexdigest()[:10]
+    _n = _seen_added.get(_digest, 0)
+    _seen_added[_digest] = _n + 1
     changes.append({
-        "id": f"added:{j}",
+        "id": f"added:{_digest}#{_n}",
         "row": None, "kind": "added", "line": label,
         "field": "line item", "before": "—", "after": label,
     })
@@ -993,8 +1005,8 @@ if (_prices < 0).any():
 # for one judgment, which would count twice in any override rate.
 recorded_key = f"recorded_{state_key}"
 if st.session_state.get(recorded_key):
-    missing = ["this decision is already recorded (switch claim, or press "
-               "Reset demo data, to record another)"]
+    missing = ["this decision is already recorded; use Record another "
+               "decision below to start a new one"]
 
 if missing:
     st.caption("To record: " + ", then ".join(missing) + ".")
@@ -1003,6 +1015,14 @@ submitted = st.button(
     "Record decision", type="primary", disabled=bool(missing),
     key=f"record_{state_key}",
 )
+
+# Unlocks this claim for another decision without touching the log. The lock
+# exists to stop an accidental double click counting twice, not to stop a
+# reviewer deliberately recording a second judgment.
+if st.session_state.get(recorded_key) and not submitted:
+    if st.button("Record another decision", key=f"again_{state_key}"):
+        del st.session_state[recorded_key]
+        st.rerun()
 
 if submitted:
     os.makedirs(RUNTIME_DIR, exist_ok=True)
@@ -1037,7 +1057,7 @@ if submitted:
         "This record is the audit trail and the calibration input. Linking "
         "predicted confidence to realized override rate is how thresholds get "
         "set, and it is the documentation the NAIC model bulletin expects, "
-        "which more than half of US states had adopted by 2026."
+        "which about half of US states had adopted by 2026."
     )
     st.json(record, expanded=False)
 

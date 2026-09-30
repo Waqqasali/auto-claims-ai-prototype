@@ -133,25 +133,41 @@ def screen(photo: Photo, ctx: ClaimContext, record_hash: bool = True) -> Photo:
             )
 
     # --- 4. Reuse across claims -------------------------------------------
+    #
+    # Every claim a photo has appeared on is kept. The first version stored a
+    # single owner and overwrote it on each view, so the claim that looked
+    # last took the photo over: the reuse flag showed once, then vanished on
+    # the next rerun and the tier flipped back. A submission is a fact about
+    # the past and is never reassigned.
     ledger = _load_ledger()
     if photo.perceptual_hash:
         for prior_hash, meta in ledger.items():
-            if meta.get("claim_id") == ctx.claim_id:
+            claims = meta.get("claims") or [meta.get("claim_id")]
+            others = [c for c in claims if c and c != ctx.claim_id]
+            if not others:
                 continue
             if imaging.hamming(photo.perceptual_hash, prior_hash) <= PHASH_DUPLICATE_DISTANCE:
                 flags.append(
                     f"Visually near-identical to an image previously submitted "
-                    f"on claim {meta.get('claim_id')}. Strongest single signal "
-                    "in this screen."
+                    f"on claim {others[0]}. Strongest single signal in this "
+                    "screen."
                 )
                 break
 
         if record_hash:
-            ledger[photo.perceptual_hash] = {
-                "claim_id": ctx.claim_id,
-                "filename": photo.filename,
-            }
-            _save_ledger(ledger)
+            entry = ledger.get(photo.perceptual_hash)
+            if entry is None:
+                ledger[photo.perceptual_hash] = {
+                    "claim_id": ctx.claim_id,        # first submitter
+                    "filename": photo.filename,
+                    "claims": [ctx.claim_id],
+                }
+                _save_ledger(ledger)
+            else:
+                claims = entry.get("claims") or [entry.get("claim_id")]
+                if ctx.claim_id not in claims:
+                    entry["claims"] = claims + [ctx.claim_id]
+                    _save_ledger(ledger)
 
     photo.c2pa_present = _c2pa_present(photo.path)
     photo.authenticity_flags = flags

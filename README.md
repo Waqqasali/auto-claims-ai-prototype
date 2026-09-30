@@ -48,8 +48,11 @@ The sidebar uploader accepts JPG, PNG, WEBP, BMP, TIFF and GIF, plus HEIC when
 
 Your photos replace the demo set and run against the selected claim's policy,
 vehicle and loss date. Quality, EXIF, C2PA and reuse checks measure your actual
-files in every mode, and evidence coverage is scored against the claim rather
-than taken from its script.
+files in every mode. In mock mode, evidence coverage for an upload is a
+placeholder: on CLM-1002 it counts distinct usable photos against the three
+views that claim requested (three copies of one photo count once), and on other
+claims, which requested nothing specific, it is a fixed 0.75. A failed quality
+check caps it at 0.40 in every mode.
 
 **In mock mode the damage line items are the claim's scripted assessment,** not
 a reading of your photographs, because the mock cannot see an image. The screen
@@ -211,7 +214,7 @@ Stage 5   routing.py       tier decision                   deterministic
 The eligibility gate and the confidence arithmetic are the auditable safety
 boundary — a model deciding how much to trust another model is not something
 you can explain to a regulator. The NAIC model bulletin on insurers' use of
-AI, adopted by more than half of US states, expects a written AI program,
+AI, adopted by about half of US states, expects a written AI program,
 documented validation, and vendor contracts that allow audit rights and
 require cooperation with regulators where appropriate.
 

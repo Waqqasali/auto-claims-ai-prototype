@@ -573,69 +573,126 @@ from PIL import Image as _Image  # noqa: E402
 
 _tmp = _tf.mkdtemp(prefix="claims-review-")
 
-# 1. Reason codes stay attached to the change they were given for. Code an
-#    added line first, THEN edit a price; with positional keys the price edit
-#    sorted ahead and inherited "missed damage".
+# 1. Reason codes stay attached to the change they were given for.
+#    Two sequences, both reproduced from the review:
+#    (a) code an added line, THEN edit a price, which sorts ahead of it;
+#    (b) code two added lines, THEN delete the first, which shifts the second.
+#    Streamlit's test harness discards injected table edits on a button
+#    click (a browser does not), so the recorded line cannot be produced here.
+#    The log writes reasons[i] for changes[i], and each reason is read from
+#    the selector keyed on that change's identity, so the bindings are the
+#    thing to check.
 for _p in (_cfg.OVERRIDE_LOG,):
     if os.path.exists(_p):
         os.remove(_p)
+
+_A = {"operation": "replace", "part": "headlamp assembly"}
+_B = {"operation": "repair", "part": "grille"}
+
+
+def _codes(at):
+    return {str(sb.key): sb.value for sb in at.selectbox
+            if str(sb.key).startswith(f"reason_{KEY}_")}
+
+
+# The harness also drops injected table state on any run where it is not
+# re-injected, which would clear a selector for one run and lose its value.
+# So every run below re-injects the table, as a browser would keep it.
+def _run_with(at, added, edited=None, **codes):
+    at.session_state[KEY] = {"edited_rows": edited or {}, "deleted_rows": [],
+                             "added_rows": added}
+    for k, v in codes.items():
+        at.session_state[k] = v
+    return at.run()
+
+
+# (a) code an added line, then insert a price edit ahead of it
 at = AppTest.from_file("app.py", default_timeout=120).run()
 at.sidebar.selectbox[0].set_value("CLM-1001").run()
-at.session_state[KEY] = {"edited_rows": {}, "deleted_rows": [],
-                         "added_rows": [{"operation": "replace",
-                                         "part": "headlamp assembly"}]}
-at.session_state[f"reason_{KEY}_added:0"] = "missed damage"
-at.run()
-at.session_state[KEY] = {"edited_rows": {0: {"price": 500.0}}, "deleted_rows": [],
-                         "added_rows": [{"operation": "replace",
-                                         "part": "headlamp assembly"}]}
-at.session_state[f"reason_{KEY}_edited:0:price"] = "pricing wrong"
-at.session_state[f"outcome_{KEY}"] = "Approve with changes"
-at.run()
-# Streamlit's test harness discards injected table edits on a button click
-# (a browser does not), so the recorded line cannot be produced here. What
-# the log writes is reasons[i] for changes[i], and each reason is read from
-# the selector keyed on that change's identity, so checking the bindings
-# after the two-step sequence is the same check.
-_by_key = {str(sb.key): sb.value for sb in at.selectbox
-           if str(sb.key).startswith(f"reason_{KEY}_")}
-_want = {f"reason_{KEY}_edited:0:price": "pricing wrong",
-         f"reason_{KEY}_added:0": "missed damage"}
+_run_with(at, [_A])
+_ka = [k for k in _codes(at) if "_added:" in k][0]
+_run_with(at, [_A], **{_ka: "missed damage"})
+_run_with(at, [_A], edited={0: {"price": 500.0}},
+          **{f"reason_{KEY}_edited:0:price": "pricing wrong"})
+_a = _codes(at)
+_ok_a = (_a.get(f"reason_{KEY}_edited:0:price") == "pricing wrong"
+         and _a.get(_ka) == "missed damage" and len(_a) == 2)
+
+# (b) code two added lines, then delete the first
+at = AppTest.from_file("app.py", default_timeout=120).run()
+at.sidebar.selectbox[0].set_value("CLM-1001").run()
+_run_with(at, [_A, _B])
+_kab = list(_codes(at))
+_run_with(at, [_A, _B], **{_kab[0]: "missed damage", _kab[1]: "wrong part"})
+_run_with(at, [_B])
+_b = _codes(at)
+_ok_b = list(_b.values()) == ["wrong part"]
+
 if at.exception:
     print(f"[FAIL] codes: {[e.message for e in at.exception]}")
     fails += 1
-elif _by_key != _want:
-    print(f"[FAIL] codes: selectors bound as {_by_key}")
+elif not _ok_a:
+    print(f"[FAIL] codes: after a price edit sorted ahead, bound as {_a}")
+    fails += 1
+elif not _ok_b:
+    print(f"[FAIL] codes: after deleting the first added line, the grille "
+          f"shows {_b}")
     fails += 1
 else:
-    print("[ OK ] codes    each reason code stays bound to its own change "
-          "after another change sorts ahead of it")
+    print("[ OK ] codes    each reason code stays on its own change, when "
+          "another sorts ahead and when an earlier added line is deleted")
 
-# One record per decision: once recorded, the button stays disabled.
+# One record per decision: once recorded, the button stays disabled, and
+# "Record another decision" unlocks this claim without touching the log.
+at = AppTest.from_file("app.py", default_timeout=120).run()
+at.sidebar.selectbox[0].set_value("CLM-1001").run()
+at.session_state[f"outcome_{KEY}"] = "Approve as reviewed"
 at.session_state[f"recorded_{KEY}"] = True
 at.run()
-_again = [b for b in at.button if "Record decision" in b.label]
+_again = [b for b in at.button if b.label == "Record decision"]
+_unlock = [b for b in at.button if b.label == "Record another decision"]
 if not _again or not _again[0].disabled:
     print("[FAIL] once: Record decision still enabled after recording")
     fails += 1
+elif not _unlock:
+    print("[FAIL] once: no way to record another decision on this claim")
+    fails += 1
 else:
-    print("[ OK ] once     a recorded decision cannot be written twice")
+    _unlock[0].click().run()
+    _after = [b for b in at.button if b.label == "Record decision"]
+    if at.exception or not _after or _after[0].disabled:
+        print("[FAIL] once: Record another decision did not unlock the claim")
+        fails += 1
+    else:
+        print("[ OK ] once     a recorded decision cannot be written twice; "
+              "Record another decision unlocks the claim")
 
-# 2. The app records what it has seen, so reuse across claims is caught.
+# 2. The app records what it has seen, so reuse across claims is caught, and
+#    the flag holds on every rerun rather than vanishing after one view.
 if os.path.exists(_cfg.PHASH_LEDGER):
     os.remove(_cfg.PHASH_LEDGER)
 at = AppTest.from_file("app.py", default_timeout=120).run()
 at.sidebar.selectbox[0].set_value("CLM-1003").run()
-_reuse = _run.run("CLM-1001", ["samples/bumper_a.jpg"], attempt=1,
-                  user_photos=True, record_hashes=False)
-_rflags = [f for p in _reuse.photos for f in p.authenticity_flags]
-if not any("CLM-1003" in f for f in _rflags):
-    print("[FAIL] reuse: viewing CLM-1003 in the app did not record its "
-          "photos, so reusing one on CLM-1001 went unflagged")
+_views = []
+for _ in range(3):
+    _reuse = _run.run("CLM-1001", ["samples/bumper_a.jpg"], attempt=1,
+                      user_photos=True, record_hashes=True)
+    _views.append(any("CLM-1003" in f for p in _reuse.photos
+                      for f in p.authenticity_flags))
+_own = [_run.run("CLM-1003", [f"samples/bumper_{a}.jpg" for a in "bc"],
+                 attempt=1, user_photos=True, record_hashes=True)
+        for _ in range(2)]
+_self = any("previously submitted" in f for r in _own for p in r.photos
+            for f in p.authenticity_flags)
+if not all(_views):
+    print(f"[FAIL] reuse: flag on successive views of CLM-1001: {_views}")
+    fails += 1
+elif _self:
+    print("[FAIL] reuse: a claim flagged its own photographs")
     fails += 1
 else:
-    print("[ OK ] reuse    photo seen on CLM-1003 is flagged when reused on "
-          "CLM-1001")
+    print("[ OK ] reuse    reuse flagged on every view, never on a claim's "
+          "own photos")
 
 # 3. Capture time comes from the Exif sub-IFD, where cameras write it. Taken
 #    before the CLM-1003 loss (2026-09-18), edited after it.
@@ -677,8 +734,13 @@ else:
 # 5. One photo cannot answer a request for three views.
 _one = _run.run("CLM-1002", ["samples/navigator_wheel_closeup.jpg"], attempt=2,
                 user_photos=True, record_hashes=False)
+_copies = _run.run("CLM-1002", ["samples/navigator_wheel_closeup.jpg"] * 3,
+                   attempt=2, user_photos=True, record_hashes=False)
 if _one.decision.tier == "verify":
     print("[FAIL] views: a single photo verified a three-view request")
+    fails += 1
+elif _copies.decision.tier == "verify":
+    print("[FAIL] views: three copies of one photo verified a three-view request")
     fails += 1
 else:
     print(f"[ OK ] views    one of three requested views at the attempt cap -> "

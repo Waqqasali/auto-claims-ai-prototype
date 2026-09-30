@@ -408,7 +408,18 @@ class MockVLM(VLMProvider):
                 # verified.
                 requested = list(_SCRIPTS[ctx.claim_id]["coverage"]["missing"])
                 usable = [p for p in photos if p.quality_ok]
-                n, need = len(usable), len(requested)
+                # Count distinct views, not files: three copies of one photo
+                # are one view. Near-duplicates are grouped by perceptual hash
+                # at the same distance the reuse check uses.
+                from config import PHASH_DUPLICATE_DISTANCE
+                from pipeline.imaging import hamming
+                distinct: list[str] = []
+                for p in usable:
+                    h = getattr(p, "perceptual_hash", "") or ""
+                    if not h or all(hamming(h, d) > PHASH_DUPLICATE_DISTANCE
+                                    for d in distinct):
+                        distinct.append(h or f"nohash-{len(distinct)}")
+                n, need = len(distinct), len(requested)
                 if n >= need:
                     base["coverage_score"] = expected
                     base["missing"] = []
@@ -421,7 +432,8 @@ class MockVLM(VLMProvider):
                     base["coverage_score"] = round(expected * n / need, 2)
                     base["missing"] = [
                         f"{need - n} more of the {need} views requested earlier "
-                        f"({n} usable photo(s) received). The request was for: "
+                        f"({n} distinct usable photo(s) received). The request "
+                        f"was for: "
                         + "; ".join(r[0].lower() + r[1:] for r in requested)
                     ]
                     base["notes"] = (
