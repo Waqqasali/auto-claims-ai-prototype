@@ -460,12 +460,20 @@ except Exception as exc:
     # response that is not the JSON asked for. A presenter needs a sentence
     # and a way forward, not a stack trace.
     st.markdown(f"### {claim_id}")
+    if "anthropic-workspace-id" in str(exc):
+        # The one live-mode setup error with a known, specific fix.
+        _hint = ("Your API key can reach more than one workspace, so the API "
+                 "needs to be told which one to use. Add "
+                 "`ANTHROPIC_WORKSPACE_ID=wrkspc_...` to your `.env` file (the "
+                 "ID is at platform.claude.com/settings/workspaces) and restart, "
+                 "or create a key limited to a single workspace.")
+    elif VLM_PROVIDER == "anthropic":
+        _hint = ("The vision model call failed or returned something unusable. "
+                 "Try again, or set `VLM_PROVIDER=mock` to continue without it.")
+    else:
+        _hint = "This is a defect in the prototype, not an expected outcome."
     st.error(
-        f"The assessment could not be completed: {type(exc).__name__}. "
-        + ("The vision model call failed or returned something unusable. Try "
-           "again, or set `VLM_PROVIDER=mock` to continue without it."
-           if VLM_PROVIDER == "anthropic" else
-           "This is a defect in the prototype, not an expected outcome."),
+        f"The assessment could not be completed: {type(exc).__name__}. {_hint}",
         icon="⚠️",
     )
     with st.expander("Technical detail"):

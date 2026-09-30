@@ -85,6 +85,12 @@ streamlit run app.py
 Or copy `.env.example` to `.env` and fill in the key there. Both routes work;
 neither is required.
 
+If the API answers that the key "is not scoped to a workspace", the key can
+reach more than one workspace in your Claude Console organization. Either set
+`ANTHROPIC_WORKSPACE_ID` (it starts with `wrkspc_` and is listed at
+platform.claude.com/settings/workspaces), or use a key limited to a single
+workspace. The app names this fix on screen when it happens.
+
 ### Uploading your own photos
 
 The sidebar uploader accepts JPG, PNG, WEBP, BMP, TIFF and GIF, plus HEIC when

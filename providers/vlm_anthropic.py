@@ -117,7 +117,14 @@ class AnthropicVLM(VLMProvider):
                 "ANTHROPIC_API_KEY is not set. Either export it, or run with "
                 "VLM_PROVIDER=mock (the default) which needs no key."
             )
-        self.client = Anthropic()
+        # Keys issued to a person in the Claude Console can reach more than one
+        # workspace, and the API then requires the workspace to be named on
+        # every request. Keys limited to a single workspace need nothing. The
+        # optional setting covers both without the user editing code.
+        workspace = (os.environ.get("ANTHROPIC_WORKSPACE_ID") or "").strip()
+        self.client = Anthropic(
+            default_headers={"anthropic-workspace-id": workspace} if workspace else None
+        )
 
     # -- internals ---------------------------------------------------------
 
