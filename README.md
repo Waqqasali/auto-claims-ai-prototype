@@ -20,8 +20,9 @@ confidence score that drives routing.
 ## Try it in five minutes
 
 Pick claims from the sidebar. Each step says what you should see in the
-default mock mode. With live vision calls the model reads the photographs,
-so the line items and scores will differ.
+default mock mode. In live mode the model reads CLM-1001 and CLM-1002, so
+their line items and scores can differ; every other claim always uses its mock
+data and gives the numbers below.
 
 1. **A clean claim.** Open CLM-1001 (Mazda 6, real photographs). It routes to
    **Verify** at 0.94. Open "Why the model proposed each line", then hover the
@@ -53,7 +54,8 @@ the screen works the way it does.
 Worth knowing before you upload your own photos:
 
 - In mock mode, the default, the damage line items come from each claim's
-  script, and the screen says so. Quality, date, reuse and confidence checks
+  script, and the screen says so. In live mode that stays true on every claim
+  except CLM-1001 and CLM-1002. Quality, date, reuse and confidence checks
   measure your actual file.
 - The claims' loss dates are in September 2026, so a photo taken today is
   flagged as outside the 14-day capture window, and a screenshot or a photo sent
@@ -95,13 +97,22 @@ what happened and where. In live mode it sets the scope of the photo check, so
 a wheel claim is judged on photos of the wheel, not on a walk-around of the
 whole vehicle, and requests stay limited to what the reported damage needs.
 
-Three claims have no real photographs: CLM-1003, CLM-1004 and CLM-1007 use
-synthetic test images. The model would correctly find no vehicle in them and
-escalate every one, which demonstrates nothing. So in live mode their images
-are never sent to the model; they keep their scripted assessment, labeled on
-screen, while the quality, metadata, reuse, ADAS, pricing, confidence and
-routing steps all run for real. Upload real photographs to one of them and it
-runs live like any other claim.
+**Live mode is set up for CLM-1001 and CLM-1002 only,** the two claims with
+real photographs. Every other claim always uses its mock data, including when
+you upload photos to it, so its numbers match the Try-it guide in both modes.
+
+| Claim | In live mode |
+|---|---|
+| CLM-1001, CLM-1002 | Read by the model |
+| CLM-1003, CLM-1004, CLM-1007 | Mock data, always. Labeled on screen and in the claim list |
+| CLM-1005, CLM-1006 | Excluded before any photo is read, in both modes |
+
+The reason is that their sample images are synthetic test files: the model
+would correctly find no vehicle in them and escalate every one, which
+demonstrates nothing. On those claims the quality, metadata, reuse, ADAS,
+pricing, confidence and routing steps still run for real; only the damage line
+items and evidence judgment come from the script. The rule sits in one place,
+`LIVE_MODEL_CLAIMS` in `config.py`, and depends on the claim alone.
 
 If the API answers that the key "is not scoped to a workspace", the key can
 reach more than one workspace in your Claude Console organization. Either set
@@ -126,8 +137,9 @@ check caps it at 0.40 in every mode.
 a reading of your photographs, because the mock cannot see an image. The screen
 states this in a notice at the top of the page whenever you upload. It means any
 photograph that passes the quality checks, whatever it shows, produces that
-claim's scripted line items. Run with `VLM_PROVIDER=anthropic` for a real
-reading of your files.
+claim's scripted line items. In live mode the model reads uploads on CLM-1001
+and CLM-1002; on every other claim the line items stay scripted, and the notice
+says so.
 
 A file that is not a readable image (a renamed document, an empty or half-transferred file) is refused with a one-line reason and the rest of the upload runs as normal.
 

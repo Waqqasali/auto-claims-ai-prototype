@@ -27,6 +27,24 @@ except ImportError:
 # "anthropic" makes real vision calls. Set VLM_PROVIDER=anthropic and
 # ANTHROPIC_API_KEY to use it.
 VLM_PROVIDER = os.environ.get("VLM_PROVIDER", "mock")
+
+# The demo claims with real photographs of real damage. In live mode only these
+# are sent to the vision model. Every other claim always uses its mock
+# (scripted) assessment, uploads included, so its numbers are the same in every
+# mode and match the Try-it guide. Their sample images are synthetic test
+# files; the model would rightly find no vehicle in them and escalate each one.
+LIVE_MODEL_CLAIMS = ("CLM-1001", "CLM-1002")
+
+
+def provider_for_claim(claim_id: str) -> str:
+    """The vision provider a claim runs on.
+
+    Decided by the claim alone, never by what was uploaded to it, so a mock
+    claim cannot reach the live model by any route.
+    """
+    if VLM_PROVIDER == "anthropic" and claim_id not in LIVE_MODEL_CLAIMS:
+        return "mock"
+    return VLM_PROVIDER
 # Sonnet is a sensible default for running the prototype, not a production
 # recommendation.
 #

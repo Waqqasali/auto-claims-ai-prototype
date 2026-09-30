@@ -1000,12 +1000,34 @@ else:
           "restarts; a changed prompt calls again")
 
 # --------------------------------------------------------------------------
-# In live mode, a claim whose only images are synthetic must never reach the
-# model (it would find no vehicle and escalate), and a claim with real
-# photographs must. Run in a separate process so VLM_PROVIDER is read fresh.
+# In live mode only CLM-1001 and CLM-1002 reach the model. Every other claim
+# always uses its mock data, uploads included, and says so. The rule is a
+# function of the claim alone (config.provider_for_claim); checked directly,
+# then through the app in a separate process so VLM_PROVIDER is read fresh.
 # --------------------------------------------------------------------------
 
 import subprocess  # noqa: E402
+
+import config as _cfg  # noqa: E402
+
+_saved_provider = _cfg.VLM_PROVIDER
+try:
+    _cfg.VLM_PROVIDER = "anthropic"
+    _live_rule = {c: _cfg.provider_for_claim(c) for c in
+                  ("CLM-1001", "CLM-1002", "CLM-1003", "CLM-1004", "CLM-1005",
+                   "CLM-1006", "CLM-1007")}
+    _cfg.VLM_PROVIDER = "mock"
+    _mock_rule = {_cfg.provider_for_claim(c) for c in _live_rule}
+finally:
+    _cfg.VLM_PROVIDER = _saved_provider
+_expected_rule = {c: ("anthropic" if c in ("CLM-1001", "CLM-1002") else "mock")
+                  for c in _live_rule}
+if _live_rule != _expected_rule or _mock_rule != {"mock"}:
+    print(f"[FAIL] live rule: {_live_rule}, mock mode {_mock_rule}")
+    fails += 1
+else:
+    print("[ OK ] live rule  live mode sends only CLM-1001 and CLM-1002 to the "
+          "model; mock mode sends none")
 
 _probe = r"""
 import os, sys, tempfile
@@ -1018,7 +1040,7 @@ def _call(self, prompt, photos):
 m.AnthropicVLM._call = _call
 from streamlit.testing.v1 import AppTest
 out = []
-for cid in ("CLM-1003", "CLM-1001"):
+for cid in ("CLM-1003", "CLM-1004", "CLM-1007", "CLM-1001"):
     # The first load opens on the default claim, which may call the model.
     # Count only the calls made after switching to the claim under test.
     at = AppTest.from_file("app.py", default_timeout=120).run()
@@ -1027,28 +1049,39 @@ for cid in ("CLM-1003", "CLM-1001"):
     at.sidebar.selectbox[0].set_value(cid).run()
     txt = " ".join(str(getattr(e, "value", "") or getattr(e, "body", ""))
                    for e in list(at.info) + list(at.get("html")))
-    out.append(f"{cid}|{len(calls)}|{'Scripted assessment' in txt}|{'STARTING POINT' in txt}")
-print(";".join(out))
+    out.append(f"{cid}|{len(calls)}|{'Mock data for this claim' in txt}")
+opts = at.sidebar.selectbox[0].options
+out.append("labels|" + "|".join(opts))
+print("RESULT " + ";".join(out))
 """
 _env = dict(os.environ, VLM_PROVIDER="anthropic",
             ANTHROPIC_API_KEY="sk-ant-test-not-real")
 _res = subprocess.run([sys.executable, "-c", _probe], env=_env,
-                      capture_output=True, text=True, timeout=600)
-_line = [l for l in _res.stdout.splitlines() if l.startswith("CLM-")]
+                      capture_output=True, text=True, timeout=900)
+_line = [l[7:] for l in _res.stdout.splitlines() if l.startswith("RESULT ")]
 _parts = dict((p.split("|")[0], p.split("|")[1:]) for p in _line[0].split(";")) if _line else {}
 if not _parts:
-    print(f"[FAIL] scripted: probe did not run: {_res.stderr[-400:]}")
-    fails += 1
-elif _parts["CLM-1003"] != ["0", "True", "True"]:
-    print(f"[FAIL] scripted: Camry in live mode {_parts['CLM-1003']} "
-          f"(calls, notice, starting point)")
-    fails += 1
-elif _parts["CLM-1001"][0] == "0":
-    print("[FAIL] scripted: real photographs did not reach the live model")
+    print(f"[FAIL] live mode: probe did not run: {_res.stderr[-400:]}")
     fails += 1
 else:
-    print("[ OK ] scripted synthetic-only claims stay scripted in live mode "
-          "(no model call, labeled); real photographs go live")
+    _bad = [c for c in ("CLM-1003", "CLM-1004", "CLM-1007")
+            if _parts[c] != ["0", "True"]]
+    _labels = _parts["labels"]
+    _labels_ok = (any(l.startswith("CLM-1001") and "live model" in l for l in _labels)
+                  and any(l.startswith("CLM-1003") and "mock data" in l for l in _labels))
+    if _bad:
+        print(f"[FAIL] live mode: {_bad} reached the model or lacked the mock "
+              f"label: {[_parts[c] for c in _bad]}")
+        fails += 1
+    elif _parts["CLM-1001"][0] == "0":
+        print("[FAIL] live mode: CLM-1001 did not reach the live model")
+        fails += 1
+    elif not _labels_ok:
+        print(f"[FAIL] live mode: claim dropdown labels {_labels}")
+        fails += 1
+    else:
+        print("[ OK ] live mode  CLM-1003, 1004 and 1007 use mock data (no model "
+              "call, labeled); CLM-1001 reaches the model; dropdown says which")
 
 # A good score must not be unconditional: bad files still fail the checks.
 _bad = _run.run("CLM-1002", ["samples/bad_blurry.jpg", "samples/bad_dark.jpg"],

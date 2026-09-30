@@ -33,7 +33,9 @@ from config import (
     RUNTIME_DIR,
     TIER_STARTING_POINT_MIN,
     TIER_VERIFY_MIN,
+    LIVE_MODEL_CLAIMS,
     VLM_PROVIDER,
+    provider_for_claim,
 )
 from pipeline import adas, comparables, gate, imaging, pricing, routing, run
 
@@ -256,7 +258,8 @@ with st.sidebar:
             "Nothing records without a reason code."
         )
         st.caption(
-            "Numbers are for mock mode; live mode reads the photos and varies. "
+            "Numbers are for mock mode. In live mode the model reads CLM-1001 "
+            "and CLM-1002, so theirs can vary; the others always use mock data. "
             "Then try to break it: a blurry photo, a screenshot, a file that is "
             "not an image, or the same photo on two claims. In mock mode the "
             "line items are scripted. Loss dates are in September 2026, so a "
@@ -264,7 +267,13 @@ with st.sidebar:
         )
 
     claims = gate.list_claims()
-    labels = {cid: f"{cid}" for cid, _ in claims}
+    # In live mode, the dropdown says which claims the model reads. In mock
+    # mode every claim is mock, so a tag would add nothing.
+    labels = {
+        cid: (cid if VLM_PROVIDER != "anthropic" else
+              f"{cid} · {'live model' if provider_for_claim(cid) == 'anthropic' else 'mock data'}")
+        for cid, _ in claims
+    }
     claim_id = st.selectbox(
         "Claim", [c for c, _ in claims], format_func=lambda c: labels[c]
     )
@@ -272,13 +281,11 @@ with st.sidebar:
     if scenario:
         st.info(scenario, icon="🎬")
         if VLM_PROVIDER == "anthropic":
-            if all(p in SYNTHETIC_SAMPLES
-                   for p in SCENARIO_PHOTOS.get((claim_id, 1), [])):
-                # Synthetic test files are never sent to the model, so the
-                # scripted expectation holds in live mode too.
-                st.caption("Live mode: this claim's sample images are "
-                           "synthetic test files, so they are never sent to "
-                           "the model and the expectation above holds.")
+            if provider_for_claim(claim_id) == "mock":
+                st.caption("Live mode is set up for "
+                           f"{' and '.join(LIVE_MODEL_CLAIMS)} only. This claim "
+                           "always uses its mock data, so the expectation "
+                           "above holds.")
             else:
                 # The scenario's "Expect:" is the scripted mock result. In live
                 # mode the model writes its own line items, so the tier can
@@ -319,12 +326,15 @@ with st.sidebar:
     live = VLM_PROVIDER == "anthropic"
     st.metric("Vision provider", VLM_PROVIDER.upper())
     if live:
-        st.success("Live model calls", icon="🟢")
+        st.success(f"Live model calls on {' and '.join(LIVE_MODEL_CLAIMS)}. "
+                   "Every other claim uses its mock data.", icon="🟢")
     else:
         st.warning(
             "Mock mode. Image quality, EXIF, C2PA and perceptual hashing are "
             "REAL in every mode. Damage line items are scripted. Set "
-            "`VLM_PROVIDER=anthropic` with an API key for live assessment.",
+            "`VLM_PROVIDER=anthropic` with an API key for live assessment "
+            f"of {' and '.join(LIVE_MODEL_CLAIMS)}, the claims with real "
+            "photographs; every other claim keeps its mock data.",
             icon="🟡",
         )
 
@@ -473,33 +483,30 @@ if not paths:
 # on two claims" screen never fired, while the README, the PRD and this screen
 # all said it did. Same-claim matches are skipped, so re-rendering a claim
 # never flags its own photographs.
-# A claim whose only images are synthetic test files is never sent to the live
-# model. The model would rightly find no vehicle to assess and escalate, which
-# says nothing about the product. Those claims use their scripted assessment in
-# every mode, and the screen says so. Uploading real photographs to them runs
-# them live as normal.
-scripted_only = bool(
-    VLM_PROVIDER == "anthropic" and not uploaded and not using_sample and paths
-    and all(os.path.basename(p) in SYNTHETIC_SAMPLES for p in paths)
-)
+# In live mode only the claims with real photographs (LIVE_MODEL_CLAIMS) reach
+# the model. Every other claim always uses its mock data, uploads included, and
+# the screen says so. The choice depends on the claim alone; see config.py.
+claim_provider = provider_for_claim(claim_id)
+mock_in_live = VLM_PROVIDER == "anthropic" and claim_provider == "mock"
 
 try:
     # Live answers are cached per photo set, so only the first look at a claim
     # waits on the model. Say so while it happens, rather than showing a
     # frozen page.
-    if VLM_PROVIDER == "anthropic" and not scripted_only:
+    if claim_provider == "anthropic":
         with st.spinner("The model is reading the photographs. The first look "
                         "at a claim takes about 10 to 20 seconds; after that "
                         "it is instant."):
             result = run.run(
                 claim_id, paths, attempt=attempt, record_hashes=True,
                 user_photos=bool(uploaded) or using_sample,
+                provider_name=claim_provider,
             )
     else:
         result = run.run(
             claim_id, paths, attempt=attempt, record_hashes=True,
             user_photos=bool(uploaded) or using_sample,
-            provider_name="mock" if scripted_only else None,
+            provider_name=claim_provider,
         )
 except Exception as exc:
     # In live mode this is usually the vision API: a timeout, a rate limit, a
@@ -532,13 +539,16 @@ ctx = result.context
 # Header and decision
 # --------------------------------------------------------------------------
 
-if scripted_only and result.gate_passed:
+if mock_in_live and result.gate_passed:
     st.info(
-        "**Scripted assessment for this claim.** Its sample images are "
-        "synthetic test files, not photographs of a vehicle, so they are not "
-        "sent to the live model. The deterministic checks, confidence and "
-        "routing all run for real. Upload real photographs to run this claim "
-        "live.",
+        f"**Mock data for this claim.** Live mode is set up for "
+        f"{' and '.join(LIVE_MODEL_CLAIMS)}, the claims with real photographs. "
+        f"This claim always uses its scripted assessment, so its numbers match "
+        f"mock mode. The quality, metadata, reuse, sensor, pricing, confidence "
+        f"and routing steps still run for real."
+        + (f" Your {len(paths)} photo(s) go through those checks, but **the "
+           f"damage line items are this claim's scripted assessment, not a "
+           f"reading of your photographs.**" if uploaded else ""),
         icon="🧪",
     )
 elif uploaded and not result.gate_passed:
