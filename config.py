@@ -51,9 +51,12 @@ def provider_for_claim(claim_id: str) -> str:
 # Inference cost does NOT decide this. At 500,000 claims a year and two vision
 # calls each, Sonnet runs about $20k a year and Opus about $41k, against a
 # $14M annual cost for the agent step the product is trying to shorten. The
-# difference between the two is 0.7% of the Phase 1 saving, and it pays for
-# itself if the stronger model widens the automatable band by ~1,900 claims,
-# which is 0.4% of volume.
+# difference between the two is under 1% of the Phase 1 saving. A claim that
+# moves into the Phase 2 band saves the rest of the agent step ($27.50 per
+# claim): $16.50 if Phase 1 already assisted it ($27.50 less the $11 Phase 1
+# saving), $27.50 if it did not. So the stronger model pays for itself if it
+# widens the band by about 760 to 1,270 claims a year, which is 0.15 to 0.25%
+# of volume.
 #
 # So the deciding measure is band width, not price: a model that identifies
 # panels more reliably earns higher per-item confidence, which widens the band
