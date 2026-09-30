@@ -87,10 +87,35 @@ _SCRIPTS: dict[str, dict] = {
             "coverage_score": 0.3,
             "notes": "Only one usable angle; the rim runs off the frame edge.",
         },
+        # Used once evidence passes, which for this claim means a
+        # resubmission. Describes samples/navigator_wheel_*.jpg.
         "damage": {
-            "line_items": [],
+            "line_items": [
+                {
+                    "operation": "repair", "part": "left rear alloy wheel",
+                    "panel": "left_rear_wheel", "damage_type": "kerb damage",
+                    "severity": "moderate",
+                    "reasoning": "Gouging confined to the outer lip, through "
+                                 "the gloss black finish to bare alloy across "
+                                 "roughly a third of the circumference. No "
+                                 "flat-spotting or cracking visible at this "
+                                 "angle, so machine and recondition rather "
+                                 "than replace.",
+                    "confidence": 0.88,
+                },
+                {
+                    "operation": "refinish", "part": "left rear alloy wheel",
+                    "panel": "left_rear_wheel", "damage_type": "finish",
+                    "severity": "moderate",
+                    "reasoning": "Refinish to the factory gloss black once the "
+                                 "lip has been reconditioned.",
+                    "confidence": 0.90,
+                },
+            ],
             "damage_panels": ["left_rear_wheel"],
-            "notes": "Not assessed — evidence insufficient.",
+            "notes": "Cosmetic assessment only. Whether the rim is true, and "
+                     "whether the inner sidewall survived, cannot be "
+                     "established from photographs.",
         },
     },
 
@@ -210,21 +235,29 @@ class MockVLM(VLMProvider):
     name = "mock"
     is_live = False
 
-    def _script_for(self, ctx: ClaimContext):
-        """The demo script, unless the reviewer supplied their own photographs.
+    def _script_for(self, ctx: ClaimContext, stage: str):
+        """The demo script for this claim, where it can honestly be applied.
 
-        A script written for CLM-1002 says the evidence is insufficient. Applied
-        to a photograph the reviewer just took, that is the mock asserting
-        something about an image it never saw. Their files get the generic path,
-        so the deterministic stages still judge the real file and the scripted
-        verdict does not override them.
+        The two stages differ for uploaded photographs.
+
+        Coverage is a judgement about whether the evidence is adequate, and the
+        deterministic checks have already measured the reviewer's actual files.
+        A script saying "insufficient" about a photograph it never saw would
+        contradict a real measurement, so uploads always take the generic path
+        here and the real sharpness, brightness and resolution decide it.
+
+        Damage is different. Mock mode cannot see any photograph, scripted or
+        uploaded, so there is nothing to contradict. Returning this claim's
+        assessment gives a demo something coherent to show without a key, and
+        the screen says plainly that the line items are scripted rather than
+        read from the file.
         """
-        if getattr(ctx, "user_supplied_photos", False):
+        if stage == "coverage" and getattr(ctx, "user_supplied_photos", False):
             return None
         return _SCRIPTS.get(ctx.claim_id)
 
     def assess_coverage(self, photos, ctx: ClaimContext, panel_vocabulary):
-        script = self._script_for(ctx)
+        script = self._script_for(ctx, "coverage")
         base = dict(script["coverage"]) if script else dict(_GENERIC_COVERAGE)
 
         # Honour reality: if the actual files fail the deterministic quality
@@ -243,5 +276,5 @@ class MockVLM(VLMProvider):
         return base
 
     def assess_damage(self, photos, ctx: ClaimContext, panel_vocabulary):
-        script = self._script_for(ctx)
+        script = self._script_for(ctx, "damage")
         return dict(script["damage"]) if script else dict(_GENERIC_DAMAGE)

@@ -242,9 +242,10 @@ if not paths:
     )
     if VLM_PROVIDER != "anthropic":
         st.info(
-            "Mock mode returns generic line items for photographs it has never "
-            "seen, which is deliberate. Set `VLM_PROVIDER=anthropic` to have "
-            "the model actually read them.",
+            "Without a key the damage line items come from this claim's script "
+            "rather than from your photographs, so the flow is demonstrable "
+            "either way. The screen says so when it happens. Set "
+            "`VLM_PROVIDER=anthropic` to have the model actually read them.",
             icon="🟡",
         )
     st.stop()
@@ -261,15 +262,24 @@ ctx = result.context
 # --------------------------------------------------------------------------
 
 if uploaded:
-    st.info(
-        f"Running your {len(paths)} photo(s) against **{claim_id}** — its "
-        f"policy, vehicle and loss date. Quality, authenticity, confidence "
-        f"and routing all measure your actual files. In mock mode the damage "
-        f"line items are generic, because this claim's scripted assessment "
-        f"describes photographs the script has seen and yours it has not. "
-        f"Set `VLM_PROVIDER=anthropic` for a real reading of your photos.",
-        icon="📎",
-    )
+    if VLM_PROVIDER == "anthropic":
+        st.info(
+            f"Running your {len(paths)} photo(s) against **{claim_id}** — its "
+            f"policy, vehicle and loss date. Every stage reads your actual "
+            f"files, including the model.",
+            icon="📎",
+        )
+    else:
+        st.info(
+            f"Running your {len(paths)} photo(s) against **{claim_id}** — its "
+            f"policy, vehicle and loss date. Image quality, EXIF, C2PA, reuse "
+            f"hashing, evidence sufficiency, confidence and routing all measure "
+            f"your actual files. **The damage line items are this claim's "
+            f"scripted assessment, not a reading of your photographs** — mock "
+            f"mode cannot see them. Set `VLM_PROVIDER=anthropic` for a real "
+            f"reading.",
+            icon="📎",
+        )
 
 st.markdown(f"### {claim_id} · {ctx.vehicle_label}")
 c1, c2, c3, c4 = st.columns(4)
