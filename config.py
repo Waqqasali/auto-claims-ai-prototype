@@ -27,7 +27,12 @@ except ImportError:
 # "anthropic" makes real vision calls. Set VLM_PROVIDER=anthropic and
 # ANTHROPIC_API_KEY to use it.
 VLM_PROVIDER = os.environ.get("VLM_PROVIDER", "mock")
-ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-5")
+# Sonnet is the default rather than Opus because this is a per-claim task at
+# volume: two vision calls on every claim, and the business case in the PRD
+# turns on unit cost at 500k claims a year. Which model ships is a production
+# decision requiring evaluation data that does not exist yet; the abstraction
+# in providers/ is what makes it a swap rather than a rewrite.
+ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-5")
 
 # --- Stage 1: image quality -------------------------------------------------
 MIN_SHARPNESS = 60.0        # variance of Laplacian below this reads as blurry
