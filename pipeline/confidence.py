@@ -14,7 +14,7 @@ FOUR SIGNALS
 
 AGGREGATION
 Anchored to the WEAKEST line item, not the mean. Ten items at 0.90 and one at
-0.60 is not a 0.87 claim. One badly wrong line ruins an estimate, and
+0.60 average 0.87; the floor reads 0.60. One badly wrong line ruins an estimate, and
 averaging buries exactly the item that matters — which is usually the sensor
 or structural item, i.e. the one that generates the supplement.
 
@@ -130,7 +130,7 @@ def compute(
         )
 
     # --- Hidden damage candidates ----------------------------------------
-    # DELIBERATELY NOT PENALISED IN THE MVP.
+    # DELIBERATELY NOT PENALIZED IN THE MVP.
     #
     # Nearly every damage pattern has candidates behind it, so a flat penalty
     # fires on almost every claim — and a signal that fires on everything

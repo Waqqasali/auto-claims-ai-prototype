@@ -54,7 +54,7 @@ _SCRIPTS: dict[str, dict] = {
                     "severity": "moderate",
                     "reasoning": "Replacement covers are supplied in primer "
                                  "and require refinishing to the vehicle's "
-                                 "metallic grey.",
+                                 "metallic gray.",
                     "confidence": 0.92,
                 },
                 {
@@ -252,7 +252,7 @@ _SCRIPTS: dict[str, dict] = {
                 {
                     "operation": "repair", "part": "left quarter panel",
                     "panel": "left_quarter_panel", "damage_type": "fold",
-                    "severity": "severe",
+                    "severity": "heavy",
                     "reasoning": "Damage continues across the wheel arch lip, "
                                  "which appears folded inward. The quarter "
                                  "panel is welded to the body structure. If the "
@@ -401,11 +401,32 @@ class MockVLM(VLMProvider):
         if getattr(ctx, "user_supplied_photos", False):
             expected = _UPLOAD_COVERAGE.get(ctx.claim_id)
             if expected is not None:
-                base["coverage_score"] = expected
-                base["notes"] = (
-                    "MOCK MODE: uploaded files scored against the evidence "
-                    "request already issued on this claim."
-                )
+                # The request issued on attempt 1 named specific views. The
+                # mock cannot see which view a photo shows, but it can count,
+                # and one photo cannot answer a request for three. Without
+                # this, a single upload of anything scored full coverage and
+                # verified.
+                requested = list(_SCRIPTS[ctx.claim_id]["coverage"]["missing"])
+                usable = [p for p in photos if p.quality_ok]
+                n, need = len(usable), len(requested)
+                if n >= need:
+                    base["coverage_score"] = expected
+                    base["missing"] = []
+                    base["notes"] = (
+                        f"MOCK MODE: {n} usable photographs against the {need} "
+                        f"views requested on attempt 1. The mock counts them; "
+                        f"it cannot tell which view each one shows."
+                    )
+                else:
+                    base["coverage_score"] = round(expected * n / need, 2)
+                    base["missing"] = [
+                        f"{need - n} more of the {need} views requested earlier "
+                        f"({n} usable photo(s) received). The request was for: "
+                        + "; ".join(r[0].lower() + r[1:] for r in requested)
+                    ]
+                    base["notes"] = (
+                        f"MOCK MODE: {n} of {need} requested views received."
+                    )
 
         # Honor reality: if the actual files fail the deterministic quality
         # checks, the mock must not pretend coverage is fine. This keeps the

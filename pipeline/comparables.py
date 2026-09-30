@@ -28,9 +28,12 @@ WHY THE FEATURE EARNS ITS PLACE
     the panel — but history can say what is usually back there.
 
 DESIGN RULE
-    The flag must be CONSUMED. It reduces claim confidence and can change
-    routing. A flag that is generated and then ignored is worse than no flag,
-    because it creates the appearance of diligence without the substance.
+    The flag must be CONSUMED, never generated and ignored. In the MVP it is
+    consumed by the reviewer: every candidate is named on the review screen
+    and counted in the routing reasons. It does NOT reduce confidence yet,
+    because a candidate fires on nearly every claim and weighting it without
+    observed rates would be inventing evidence (see confidence.py). The
+    penalty switches on, rate-weighted, once a real corpus supplies rates.
 """
 
 import json

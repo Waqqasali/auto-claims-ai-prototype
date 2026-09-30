@@ -70,6 +70,9 @@ W_RETRIEVAL_DENSITY = 0.15
 W_CROSS_STAGE_AGREEMENT = 0.15
 
 ADAS_CONFIDENCE_PENALTY = 0.25      # flat subtraction when a sensor zone is hit
+# Reserved, and deliberately unused in the MVP: hidden damage candidates are
+# shown to the reviewer but not penalized until observed rates exist. See the
+# note in pipeline/confidence.py.
 HIDDEN_DAMAGE_PENALTY_EACH = 0.05   # per candidate, capped below
 HIDDEN_DAMAGE_PENALTY_CAP = 0.15
 AUTHENTICITY_FLAG_PENALTY = 0.20
@@ -82,6 +85,9 @@ TIER_STARTING_POINT_MIN = 0.55      # >= this: present as a starting point
 # --- Paths ------------------------------------------------------------------
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 SAMPLES_DIR = os.path.join(os.path.dirname(__file__), "samples")
-RUNTIME_DIR = os.path.join(os.path.dirname(__file__), "runtime")
+# Overridable so the test suites write to a temporary folder instead of the
+# presenter's real ledger and override log.
+RUNTIME_DIR = (os.environ.get("CLAIMS_RUNTIME_DIR")
+               or os.path.join(os.path.dirname(__file__), "runtime"))
 OVERRIDE_LOG = os.path.join(RUNTIME_DIR, "overrides.jsonl")
 PHASH_LEDGER = os.path.join(RUNTIME_DIR, "phash_ledger.json")

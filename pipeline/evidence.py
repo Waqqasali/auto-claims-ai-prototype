@@ -84,7 +84,15 @@ def evaluate(
     unusable = [p for p in photos if not p.quality_ok]
     missing = list(coverage.get("missing", []))
     unfixable_key = coverage.get("unfixable") or ""
-    score = float(coverage.get("coverage_score", 0.0))
+    score = float(coverage.get("coverage_score") or 0.0)
+
+    # The measurement overrides the opinion, for every provider. A model may
+    # report good coverage from a blurred or underexposed file; the
+    # deterministic checks have already measured that file and failed it.
+    # This cap previously lived only in the mock, so in live mode the screen
+    # could show a high coverage score beside a failed photograph.
+    if unusable:
+        score = min(score, 0.40)
 
     # --- Bail immediately on conditions resubmission cannot fix ----------
     if unfixable_key:

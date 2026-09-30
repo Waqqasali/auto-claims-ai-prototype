@@ -17,7 +17,7 @@
       "vehicle_model": "6"
     },
     "CLM-1002": {
-      "_scenario": "Insufficient evidence. Expect: a specific re-request, then escalation at the attempt cap. Upload your own photos here to see the loop resolve.",
+      "_scenario": "Insufficient evidence. Attempt 1: a specific re-request naming three views. Attempt 2 waits for the resubmission: upload the three Navigator photos from the samples folder and it proceeds to an estimate; upload fewer, or poor ones, and it escalates to a claims agent at the attempt cap.",
       "loss_date": "2026-09-20",
       "policy_in_force": true,
       "coverage_applies": true,

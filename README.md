@@ -58,6 +58,8 @@ photograph that passes the quality checks, whatever it shows, produces that
 claim's scripted line items. Run with `VLM_PROVIDER=anthropic` for a real
 reading of your files.
 
+A file that is not a readable image (a renamed document, an empty or half-transferred file) is refused with a one-line reason and the rest of the upload runs as normal.
+
 WEBP and HEIC usually arrive with EXIF stripped by the re-encode. That is not
 silently ignored: it raises an authenticity flag and lowers confidence, which is
 the intended behavior and easy to demonstrate by uploading the same photo as a
@@ -77,6 +79,9 @@ claim out of its tier on screen.
 python smoke_test.py    # pipeline, all seven claims, no UI
 python ui_test.py       # exercises the Streamlit script for every scenario
 ```
+
+Both write to a temporary folder, never to `runtime/`, so running them does not
+touch your demo data.
 
 ---
 
@@ -104,7 +109,9 @@ resubmission that supplies them.
 Attempt 2 starts empty on purpose: the request has gone out and nothing has
 come back, so the claim sits in a waiting state and nothing is assessed. Upload
 the three files in `samples/navigator_wheel_*.jpg`, or your own, and the claim
-proceeds.
+proceeds. Upload fewer than three usable photos, or poor ones, and it escalates
+to a claims agent instead, because attempt 2 is the cap. In mock mode the count
+is what is checked: the mock cannot tell which view each photo shows.
 
 It is the clearest case in the set for what this product is actually about.
 The visible damage is cosmetic and the system is confident about it. But
@@ -128,9 +135,12 @@ photograph**, so confidence takes a 0.25 penalty and the claim routes for
 human judgment.
 
 The R&I line for the parking sensors carries 0.71 confidence, the lowest in
-the claim. Because claim confidence is anchored on the weakest line rather
-than the mean, that single item drives the outcome. Averaging would have
-buried it at 0.84 and sent the claim through.
+the claim, and the score is anchored on it rather than on the 0.84 average.
+Be precise about what decides the tier, though: before the penalty the claim
+scores 0.85, which on its own would verify. **The sensor zone is what moves
+it to a starting point.** A system that averaged the lines and knew nothing
+about sensor zones would have shown 0.84 and presented the draft as verified.
+CLM-1007 is the contrast: a claim that is weak before any penalty.
 
 That is the whole product in one screen.
 
@@ -138,8 +148,9 @@ That is the whole product in one screen.
 
 ## What is real and what is stubbed
 
-Honesty here matters more than coverage. Seven of nine MVP features run for
-real; two depend on data that exists only inside a carrier.
+Honesty here matters more than coverage. Most of the pipeline runs for real.
+Three components are stubbed because they depend on data that exists only
+inside a carrier: pricing, historical comparables and the policy system.
 
 | Component | Status | Detail |
 |---|---|---|
@@ -160,8 +171,9 @@ real; two depend on data that exists only inside a carrier.
 ### How the stubs are shaped, and why it matters
 
 Every stub is isolated behind a function whose signature, output type and
-every consumer are final. Connecting real data means rewriting **one function
-body** and changing nothing else.
+every consumer are final. Connecting real data means rewriting the bodies
+behind **one module's interface**: `price_line()` for pricing, `lookup()` and
+`retrieval_density()` for comparables. Nothing that consumes them changes.
 
 A bad stub hardcodes a value in the middle of the logic and has to be unpicked
 from five places. The difference is whether a prototype is throwaway or is
@@ -188,7 +200,7 @@ Stage 1b  authenticity.py  EXIF, C2PA, reuse               mostly deterministic
 Stage 1c  evidence.py      sufficiency + re-request        VLM for coverage
           ── STOPS HERE if evidence is inadequate ──
 Stage 2   assessment       line items with reasoning       VLM
-Stage 3   pricing.py       cost lookup                     deterministic (stub)
+Stage 3a  pricing.py       cost lookup                     deterministic (stub)
 Stage 3b  adas.py          panel/sensor intersection       deterministic
 Stage 3c  comparables.py   hidden damage candidates        deterministic (stub)
 Stage 4   confidence.py    composite score                 deterministic
@@ -198,9 +210,10 @@ Stage 5   routing.py       tier decision                   deterministic
 **Two of ten stages use a model.** The rest is deterministic on purpose.
 The eligibility gate and the confidence arithmetic are the auditable safety
 boundary — a model deciding how much to trust another model is not something
-you can explain to a regulator, and the NAIC model bulletin (adopted in 11
-states as of 2024) requires third-party AI to carry contractual audit rights
-and regulatory cooperation.
+you can explain to a regulator. The NAIC model bulletin on insurers' use of
+AI, adopted by more than half of US states, expects a written AI program,
+documented validation, and vendor contracts that allow audit rights and
+require cooperation with regulators where appropriate.
 
 ### The sovereignty answer
 

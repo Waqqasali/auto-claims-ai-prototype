@@ -146,9 +146,9 @@ HELP_LINE_ITEM_FLOOR = (
     "that line: that this operation, on this part, at this severity, is what "
     "the damage actually requires.\n\n"
     "The claim is anchored on the lowest of them rather than the average. Ten "
-    "lines at 0.90 and one at 0.60 is not a 0.87 claim, because one wrong line "
-    "ruins an estimate, and the weak line is usually the sensor or structural "
-    "item that generates the supplement.\n\n"
+    "lines at 0.90 and one at 0.60 average 0.87; this signal reads 0.60, "
+    "because one wrong line ruins an estimate, and the weak line is usually "
+    "the sensor or structural item that generates the supplement.\n\n"
     "Blend lines are excluded. A blend is paint applied to an adjacent "
     "undamaged panel so the refinished panel beside it does not show a hard "
     "edge, so its confidence is a judgment about color match rather than "
@@ -229,6 +229,9 @@ with st.sidebar:
              "photos from the samples folder and the claim proceeds to an "
              "estimate.",
     )
+    if attempt == 2 and (claim_id, 2) not in SCENARIO_PHOTOS:
+        st.caption("No resubmission was requested on this claim, so attempt 2 "
+                   "shows the original photographs.")
 
     uploaded = st.file_uploader(
         "Or upload your own photos",
@@ -291,6 +294,8 @@ with st.sidebar:
             if os.path.exists(_path):
                 os.remove(_path)
         shutil.rmtree(os.path.join(RUNTIME_DIR, "uploads"), ignore_errors=True)
+        for _k in [k for k in st.session_state.keys() if str(k).startswith("recorded_")]:
+            del st.session_state[_k]
         st.success("Demo data cleared.", icon="🧹")
 
 
@@ -309,16 +314,38 @@ def rationale(text):
 # Run the pipeline
 # --------------------------------------------------------------------------
 
+rejected_uploads = []
 if uploaded:
-    os.makedirs(os.path.join(RUNTIME_DIR, "uploads"), exist_ok=True)
     paths = []
-    for f in uploaded:
-        dest = os.path.join(RUNTIME_DIR, "uploads", f.name)
+    for i, f in enumerate(uploaded):
+        # One folder per file, so two phones' IMG_0001.jpg cannot overwrite
+        # each other and the displayed filename stays the one the user chose.
+        folder = os.path.join(RUNTIME_DIR, "uploads", claim_id, f"{i:02d}")
+        os.makedirs(folder, exist_ok=True)
+        dest = os.path.join(folder, f.name)
         with open(dest, "wb") as fh:
             fh.write(f.getbuffer())
-        paths.append(dest)
+        why = imaging.unreadable_reason(dest)
+        if why:
+            rejected_uploads.append((f.name, why))
+        else:
+            paths.append(dest)
 else:
     paths = [os.path.join(SAMPLES, n) for n in photos_for(claim_id, attempt)]
+
+if rejected_uploads:
+    st.error(
+        "**Not used:** "
+        + "; ".join(f"`{name}`, {why}" for name, why in rejected_uploads)
+        + ". Everything else runs as normal.",
+        icon="🚫",
+    )
+
+if uploaded and not paths:
+    st.markdown(f"### {claim_id} · {gate.load_claim_context(claim_id).vehicle_label}")
+    st.info("None of the uploaded files could be read as an image, so nothing "
+            "was assessed. Upload photographs in one of the formats the uploader lists.", icon="📎")
+    st.stop()
 
 if not paths:
     ctx_waiting = gate.load_claim_context(claim_id)
@@ -357,10 +384,32 @@ if not paths:
         )
     st.stop()
 
-result = run.run(
-    claim_id, paths, attempt=attempt, record_hashes=False,
-    user_photos=bool(uploaded),
-)
+# record_hashes=True: the reuse check only works if the app records what it
+# has seen. It was False from the first commit, so in the app the "same photo
+# on two claims" screen never fired, while the README, the PRD and this screen
+# all said it did. Same-claim matches are skipped, so re-rendering a claim
+# never flags its own photographs.
+try:
+    result = run.run(
+        claim_id, paths, attempt=attempt, record_hashes=True,
+        user_photos=bool(uploaded),
+    )
+except Exception as exc:
+    # In live mode this is usually the vision API: a timeout, a rate limit, a
+    # response that is not the JSON asked for. A presenter needs a sentence
+    # and a way forward, not a stack trace.
+    st.markdown(f"### {claim_id}")
+    st.error(
+        f"The assessment could not be completed: {type(exc).__name__}. "
+        + ("The vision model call failed or returned something unusable. Try "
+           "again, or set `VLM_PROVIDER=mock` to continue without it."
+           if VLM_PROVIDER == "anthropic" else
+           "This is a defect in the prototype, not an expected outcome."),
+        icon="⚠️",
+    )
+    with st.expander("Technical detail"):
+        st.exception(exc)
+    st.stop()
 ctx = result.context
 
 
@@ -368,7 +417,18 @@ ctx = result.context
 # Header and decision
 # --------------------------------------------------------------------------
 
-if uploaded:
+if uploaded and not result.gate_passed:
+    # The gate runs before any photograph is read. Saying "your photos are
+    # being measured" above a claim that never looked at them contradicts the
+    # Photos: 0 metric directly beneath it.
+    st.info(
+        f"**{claim_id}** is excluded at the gate, before any photograph is "
+        f"read, so your {len(paths)} upload(s) were not processed. That is "
+        f"the intended behavior: no compute is spent on a claim that leaves "
+        f"the automated path.",
+        icon="📎",
+    )
+elif uploaded:
     if VLM_PROVIDER == "anthropic":
         st.info(
             f"Running your {len(paths)} photo(s) against **{claim_id}** — its "
@@ -630,6 +690,24 @@ if _unpriced:
         icon="💲",
     )
 
+# A claim is filed before anyone knows what it costs; the assessment is what
+# tells the carrier the visible damage sits under the deductible. Saying so is
+# useful. Closing the claim on it is not, when the photos cannot rule out what
+# is behind the panel.
+if assessment.estimate_total < ctx.deductible:
+    _risky = bool(assessment.hidden_damage) or bool(
+        adas.involved_zones(ctx, assessment.damage_panels))
+    st.info(
+        f"**The visible estimate is below the \\${ctx.deductible:,.0f} "
+        f"deductible, so as drafted nothing is payable.** "
+        + ("The risks named above could take the repair past it once the "
+           "damage is inspected, which is why this draft should not be used "
+           "on its own to close the claim."
+           if _risky else
+           "Confirm the scope before advising the policyholder."),
+        icon="🧾",
+    )
+
 original = pd.DataFrame(
     [
         {
@@ -656,7 +734,8 @@ edited = st.data_editor(
     width='stretch',
     hide_index=True,
     column_config={
-        "price": st.column_config.NumberColumn("price", format="$%.2f"),
+        "price": st.column_config.NumberColumn("price", format="$%.2f",
+                                               min_value=0.0),
         "confidence": st.column_config.ProgressColumn(
             "confidence", min_value=0.0, max_value=1.0, format="%.2f",
             color=CONFIDENCE_BAR,
@@ -756,8 +835,8 @@ with st.expander("Show the arithmetic"):
         st.markdown(f"- {line}")
     st.caption(
         "Anchored on the weakest line item rather than the mean. Ten items at "
-        "0.90 and one at 0.60 is not a 0.87 claim — one badly wrong line ruins "
-        "an estimate, and averaging buries exactly the item that matters."
+        "0.90 and one at 0.60 average 0.87; the floor reads 0.60, because one "
+        "badly wrong line ruins an estimate and averaging buries it."
     )
 
 
@@ -769,7 +848,12 @@ delta = st.session_state.get(state_key, {}) or {}
 
 
 def _describe(row) -> str:
-    return f"{row.get('operation', '?')} {row.get('part', '?')}".strip()
+    bits = []
+    for k in ("operation", "part"):
+        v = row.get(k)
+        if v is not None and not (isinstance(v, float) and pd.isna(v)) and str(v).strip():
+            bits.append(str(v).strip())
+    return " ".join(bits) or "unnamed line"
 
 
 changes = []
@@ -791,14 +875,16 @@ for idx, fields in (delta.get("edited_rows") or {}).items():
         elif str(before) == str(after):
             continue
         changes.append({
+            "id": f"edited:{idx}:{col}",
             "row": idx, "kind": "edited",
             "line": _describe(original.iloc[idx]),
             "field": col, "before": before, "after": after,
         })
 
-for row in (delta.get("added_rows") or []):
-    label = _describe(row) or "new line item"
+for j, row in enumerate(delta.get("added_rows") or []):
+    label = _describe(row)
     changes.append({
+        "id": f"added:{j}",
         "row": None, "kind": "added", "line": label,
         "field": "line item", "before": "—", "after": label,
     })
@@ -809,6 +895,7 @@ for idx in (delta.get("deleted_rows") or []):
         continue
     label = _describe(original.iloc[idx])
     changes.append({
+        "id": f"removed:{idx}",
         "row": idx, "kind": "removed", "line": label,
         "field": "line item", "before": label, "after": "—",
     })
@@ -851,8 +938,13 @@ for i, ch in enumerate(changes):
             )
     with col_b:
         # index=None: a code the reviewer never chose is not a reason.
+        # Keyed on the change's identity, not its position in the list. With
+        # positional keys, adding a line and then editing a price shifted every
+        # code one slot, and the log recorded the price edit as "missed damage"
+        # with no visible sign. The override log is the training signal, so a
+        # misattributed code is worse than a missing one.
         reasons[i] = st.selectbox(
-            "reason", REASON_CODES, key=f"reason_{state_key}_{i}",
+            "reason", REASON_CODES, key=f"reason_{state_key}_{ch['id']}",
             index=None, placeholder="Choose a reason code",
             label_visibility="collapsed",
         )
@@ -883,11 +975,26 @@ if action is None:
     missing.append("choose an outcome")
 if action == "Reject and rebuild" and not rejection_reason:
     missing.append("choose a rejection reason")
+if action == "Approve as reviewed" and changes:
+    missing.append(f"choose Approve with changes, since {len(changes)} "
+                   f"change(s) are pending, or undo them")
+if action == "Approve with changes" and not changes:
+    missing.append("make a change in the table, or choose Approve as reviewed")
 unjustified = [i for i in range(len(changes)) if not reasons.get(i)]
 if unjustified:
     missing.append(
         f"give a reason code for {len(unjustified)} change(s)"
     )
+_prices = pd.to_numeric(edited["price"], errors="coerce")
+if (_prices < 0).any():
+    missing.append("correct the negative price")
+
+# One record per decision. Without this a double click wrote two log lines
+# for one judgment, which would count twice in any override rate.
+recorded_key = f"recorded_{state_key}"
+if st.session_state.get(recorded_key):
+    missing = ["this decision is already recorded (switch claim, or press "
+               "Reset demo data, to record another)"]
 
 if missing:
     st.caption("To record: " + ", then ".join(missing) + ".")
@@ -919,6 +1026,7 @@ if submitted:
     }
     with open(OVERRIDE_LOG, "a", encoding="utf-8") as fh:
         fh.write(json.dumps(record) + "\n")
+    st.session_state[recorded_key] = True
 
     st.success(
         f"Recorded. {len(changes)} override(s) written to "
@@ -928,8 +1036,8 @@ if submitted:
     rationale(
         "This record is the audit trail and the calibration input. Linking "
         "predicted confidence to realized override rate is how thresholds get "
-        "set, and it is also what the NAIC model bulletin's documentation "
-        "requirements are asking for — adopted in 11 states as of 2024."
+        "set, and it is the documentation the NAIC model bulletin expects, "
+        "which more than half of US states had adopted by 2026."
     )
     st.json(record, expanded=False)
 
@@ -953,7 +1061,7 @@ if os.path.exists(OVERRIDE_LOG):
                     rows.append(r)
                 else:
                     unreadable += 1
-        st.caption(f"{len(rows)} decision(s) recorded across this session."
+        st.caption(f"{len(rows)} decision(s) recorded so far."
                    + (f" {unreadable} unreadable line(s) skipped." if unreadable else ""))
         flat = []
         for r in rows:

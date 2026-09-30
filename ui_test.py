@@ -7,6 +7,11 @@ deprecated parameter were both caught.
 Every scenario runs twice, once with the design rationale toggle off and once
 with it on, because the toggle changes which branches execute.
 """
+# Run against a throwaway runtime folder. These tests delete and plant ledger
+# and log entries, and must never touch a presenter's real demo data.
+import os as _os
+import tempfile as _tempfile
+_os.environ["CLAIMS_RUNTIME_DIR"] = _tempfile.mkdtemp(prefix="claims-test-")
 import re
 import sys
 
@@ -161,17 +166,24 @@ for label, delta, expected in OVERRIDE_CASES:
 
 KEY = "edit::CLM-1001::1"
 
+PRICE_EDIT = {"edited_rows": {0: {"price": 500.0}}}
 GATING = [
-    # label,                       delta,                          outcome,                reject reason,  codes,  should enable
-    ("nothing chosen",             {},                             None,                   None,           [],     False),
-    ("approve, no changes",        {},                             "Approve as reviewed",  None,           [],     True),
-    ("reject without a reason",    {},                             "Reject and rebuild",   None,           [],     False),
-    ("reject with a reason",       {},                             "Reject and rebuild",
-                                   "evidence inadequate for assessment",                                   [],     True),
-    ("change without a code",      {"edited_rows": {0: {"price": 500.0}}},
-                                   "Approve with changes",         None,                   [],             False),
-    ("change with a code",         {"edited_rows": {0: {"price": 500.0}}},
-                                   "Approve with changes",         None,     ["pricing wrong"],            True),
+    # label, delta, outcome, reject reason, codes as (change id, code), should enable
+    ("nothing chosen",               {}, None, None, [], False),
+    ("approve, no changes",          {}, "Approve as reviewed", None, [], True),
+    ("reject without a reason",      {}, "Reject and rebuild", None, [], False),
+    ("reject with a reason",         {}, "Reject and rebuild",
+                                     "evidence inadequate for assessment", [], True),
+    ("change without a code",        PRICE_EDIT, "Approve with changes", None, [], False),
+    ("change with a code",           PRICE_EDIT, "Approve with changes", None,
+                                     [("edited:0:price", "pricing wrong")], True),
+    # The outcome must agree with the table.
+    ("approve as reviewed, but edited", PRICE_EDIT, "Approve as reviewed", None,
+                                     [("edited:0:price", "pricing wrong")], False),
+    ("approve with changes, none made", {}, "Approve with changes", None, [], False),
+    ("negative price",               {"edited_rows": {0: {"price": -5000.0}}},
+                                     "Approve with changes", None,
+                                     [("edited:0:price", "pricing wrong")], False),
 ]
 
 for label, delta, outcome, reject_reason, codes, should_enable in GATING:
@@ -186,8 +198,8 @@ for label, delta, outcome, reject_reason, codes, should_enable in GATING:
         at.session_state[f"outcome_{KEY}"] = outcome
     if reject_reason is not None:
         at.session_state[f"reject_{KEY}"] = reject_reason
-    for i, code in enumerate(codes):
-        at.session_state[f"reason_{KEY}_{i}"] = code
+    for change_id, code in codes:
+        at.session_state[f"reason_{KEY}_{change_id}"] = code
     at.run()
 
     if at.exception:
@@ -549,6 +561,128 @@ else:
         else:
             print(f"[ OK ] reset    stale ledger took Navigator to "
                   f"{_before.decision.tier}; after reset it verifies again")
+
+
+# --------------------------------------------------------------------------
+# Defects found by the independent pre-submission review. Each is reproduced
+# the way the reviewer reproduced it, so the fix is proven, not assumed.
+# --------------------------------------------------------------------------
+
+import tempfile as _tf  # noqa: E402
+from PIL import Image as _Image  # noqa: E402
+
+_tmp = _tf.mkdtemp(prefix="claims-review-")
+
+# 1. Reason codes stay attached to the change they were given for. Code an
+#    added line first, THEN edit a price; with positional keys the price edit
+#    sorted ahead and inherited "missed damage".
+for _p in (_cfg.OVERRIDE_LOG,):
+    if os.path.exists(_p):
+        os.remove(_p)
+at = AppTest.from_file("app.py", default_timeout=120).run()
+at.sidebar.selectbox[0].set_value("CLM-1001").run()
+at.session_state[KEY] = {"edited_rows": {}, "deleted_rows": [],
+                         "added_rows": [{"operation": "replace",
+                                         "part": "headlamp assembly"}]}
+at.session_state[f"reason_{KEY}_added:0"] = "missed damage"
+at.run()
+at.session_state[KEY] = {"edited_rows": {0: {"price": 500.0}}, "deleted_rows": [],
+                         "added_rows": [{"operation": "replace",
+                                         "part": "headlamp assembly"}]}
+at.session_state[f"reason_{KEY}_edited:0:price"] = "pricing wrong"
+at.session_state[f"outcome_{KEY}"] = "Approve with changes"
+at.run()
+# Streamlit's test harness discards injected table edits on a button click
+# (a browser does not), so the recorded line cannot be produced here. What
+# the log writes is reasons[i] for changes[i], and each reason is read from
+# the selector keyed on that change's identity, so checking the bindings
+# after the two-step sequence is the same check.
+_by_key = {str(sb.key): sb.value for sb in at.selectbox
+           if str(sb.key).startswith(f"reason_{KEY}_")}
+_want = {f"reason_{KEY}_edited:0:price": "pricing wrong",
+         f"reason_{KEY}_added:0": "missed damage"}
+if at.exception:
+    print(f"[FAIL] codes: {[e.message for e in at.exception]}")
+    fails += 1
+elif _by_key != _want:
+    print(f"[FAIL] codes: selectors bound as {_by_key}")
+    fails += 1
+else:
+    print("[ OK ] codes    each reason code stays bound to its own change "
+          "after another change sorts ahead of it")
+
+# One record per decision: once recorded, the button stays disabled.
+at.session_state[f"recorded_{KEY}"] = True
+at.run()
+_again = [b for b in at.button if "Record decision" in b.label]
+if not _again or not _again[0].disabled:
+    print("[FAIL] once: Record decision still enabled after recording")
+    fails += 1
+else:
+    print("[ OK ] once     a recorded decision cannot be written twice")
+
+# 2. The app records what it has seen, so reuse across claims is caught.
+if os.path.exists(_cfg.PHASH_LEDGER):
+    os.remove(_cfg.PHASH_LEDGER)
+at = AppTest.from_file("app.py", default_timeout=120).run()
+at.sidebar.selectbox[0].set_value("CLM-1003").run()
+_reuse = _run.run("CLM-1001", ["samples/bumper_a.jpg"], attempt=1,
+                  user_photos=True, record_hashes=False)
+_rflags = [f for p in _reuse.photos for f in p.authenticity_flags]
+if not any("CLM-1003" in f for f in _rflags):
+    print("[FAIL] reuse: viewing CLM-1003 in the app did not record its "
+          "photos, so reusing one on CLM-1001 went unflagged")
+    fails += 1
+else:
+    print("[ OK ] reuse    photo seen on CLM-1003 is flagged when reused on "
+          "CLM-1001")
+
+# 3. Capture time comes from the Exif sub-IFD, where cameras write it. Taken
+#    before the CLM-1003 loss (2026-09-18), edited after it.
+_img_path = os.path.join(_tmp, "edited_after_capture.jpg")
+_im = _Image.new("RGB", (1600, 1200), (118, 122, 128))
+_ex = _Image.Exif()
+_ex[271], _ex[272] = "Apple", "iPhone 15"
+_ex[306] = "2026:09:19 10:00:00"                      # main block: last modified
+_ex.get_ifd(0x8769)[36867] = "2026:08:19 09:00:00"     # sub-IFD: captured
+_im.save(_img_path, exif=_ex, quality=90)
+_e = _run.run("CLM-1003", [_img_path], attempt=1, user_photos=True,
+              record_hashes=False)
+if not any("predates" in f for p in _e.photos for f in p.authenticity_flags):
+    print("[FAIL] exif: a photo captured a month before the loss was not flagged")
+    fails += 1
+else:
+    print("[ OK ] exif     capture time read from the sub-IFD, pre-loss photo "
+          "flagged")
+
+# 4. Files that are not readable images are refused with a reason.
+_bad = {"fake.jpg": b"not an image", "empty.jpg": b""}
+with open("samples/good_a.jpg", "rb") as _fh:
+    _raw = _fh.read()
+_bad["truncated.jpg"] = _raw[: len(_raw) // 3]
+_unread = []
+for _name, _data in _bad.items():
+    _bp = os.path.join(_tmp, _name)
+    with open(_bp, "wb") as _fh:
+        _fh.write(_data)
+    if not _img.unreadable_reason(_bp):
+        _unread.append(_name)
+if _unread or _img.unreadable_reason("samples/good_a.jpg"):
+    print(f"[FAIL] unreadable: not refused {_unread}, or a good file refused")
+    fails += 1
+else:
+    print("[ OK ] unreadable fake, empty and truncated files refused; a real "
+          "photo accepted")
+
+# 5. One photo cannot answer a request for three views.
+_one = _run.run("CLM-1002", ["samples/navigator_wheel_closeup.jpg"], attempt=2,
+                user_photos=True, record_hashes=False)
+if _one.decision.tier == "verify":
+    print("[FAIL] views: a single photo verified a three-view request")
+    fails += 1
+else:
+    print(f"[ OK ] views    one of three requested views at the attempt cap -> "
+          f"{_one.decision.tier}")
 
 
 # A good score must not be unconditional: bad files still fail the checks.

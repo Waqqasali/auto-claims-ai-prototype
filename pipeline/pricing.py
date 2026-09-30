@@ -46,7 +46,7 @@ def price_line(item: LineItem) -> LineItem:
 
     total = (
         entry["part"]
-        + entry["labour_hours"] * table["labour_rate_per_hour"]
+        + entry["labor_hours"] * table["labor_rate_per_hour"]
         + entry["paint_hours"] * table["paint_rate_per_hour"]
     )
     item.price = round(total, 2)

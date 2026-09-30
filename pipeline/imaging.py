@@ -5,10 +5,11 @@ model for these would add cost and non-determinism for no gain.
 """
 
 import math
+import os
 from datetime import datetime
 from typing import Optional
 
-from PIL import Image, ExifTags
+from PIL import ExifTags, Image, UnidentifiedImageError
 
 # Reverse map so we can look up tag numbers by name
 _TAG_IDS = {name: num for num, name in ExifTags.TAGS.items()}
@@ -42,11 +43,11 @@ def _laplacian_variance(img: Image.Image) -> float:
     A blurred image has little high-frequency content, so the second
     derivative is small everywhere and its variance is low.
     """
-    grey = img.convert("L")
+    gray = img.convert("L")
     # Downscale large images so this stays fast and scale-independent
-    grey.thumbnail((512, 512))
-    px = grey.load()
-    w, h = grey.size
+    gray.thumbnail((512, 512))
+    px = gray.load()
+    w, h = gray.size
     if w < 3 or h < 3:
         return 0.0
 
@@ -68,9 +69,9 @@ def _laplacian_variance(img: Image.Image) -> float:
 
 
 def _mean_brightness(img: Image.Image) -> float:
-    grey = img.convert("L")
-    grey.thumbnail((256, 256))
-    px = list(grey.getdata())
+    gray = img.convert("L")
+    gray.thumbnail((256, 256))
+    px = list(gray.getdata())
     return sum(px) / len(px) if px else 0.0
 
 
@@ -81,6 +82,29 @@ def _parse_exif_datetime(raw: str) -> Optional[datetime]:
         except (ValueError, TypeError):
             continue
     return None
+
+
+def unreadable_reason(path: str) -> Optional[str]:
+    """None if the file decodes fully as an image, otherwise a short reason.
+
+    An upload is whatever the user picked. A renamed document, a zero-byte
+    file or a half-transferred JPEG must be refused with a sentence, not
+    allowed to reach measure() and take the review screen down with a
+    traceback.
+    """
+    try:
+        if os.path.getsize(path) == 0:
+            return "the file is empty"
+        with Image.open(path) as img:
+            img.load()
+        return None
+    except UnidentifiedImageError:
+        return "not a recognized image format"
+    except OSError as e:
+        return "the image data is incomplete or damaged" if "truncated" in str(e) \
+            else "the file could not be decoded as an image"
+    except Exception:
+        return "the file could not be decoded as an image"
 
 
 def measure(path: str) -> dict:
@@ -104,9 +128,22 @@ def measure(path: str) -> dict:
         for tag_id, value in exif_raw.items():
             name = ExifTags.TAGS.get(tag_id, str(tag_id))
             exif[name] = value
+        # Cameras and phones write the capture time (DateTimeOriginal) into
+        # the Exif sub-IFD, not the main block. getexif() returns only the main
+        # block, whose DateTime is the LAST MODIFIED time. Reading only the
+        # main block meant a photo taken before the loss and edited after it
+        # passed the capture-window check. The sub-IFD is merged in and wins.
+        try:
+            sub = exif_raw.get_ifd(0x8769)
+        except Exception:
+            sub = {}
+        for tag_id, value in (sub or {}).items():
+            exif[ExifTags.TAGS.get(tag_id, str(tag_id))] = value
 
+    # Capture time first, then digitized, and only then the modification time
+    # as a last resort, since an edit rewrites DateTime.
     capture_time = None
-    for key in ("DateTimeOriginal", "DateTime", "DateTimeDigitized"):
+    for key in ("DateTimeOriginal", "DateTimeDigitized", "DateTime"):
         if key in exif:
             capture_time = _parse_exif_datetime(str(exif[key]))
             if capture_time:

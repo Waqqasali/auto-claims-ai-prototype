@@ -39,8 +39,8 @@ def decide(
         )
     if authenticity_flags:
         reasons.append(
-            f"{len(authenticity_flags)} media authenticity flag(s) — routed for "
-            f"review, not denied."
+            f"{len(authenticity_flags)} distinct media authenticity concern(s) "
+            f"across the photos — routed for review, not denied."
         )
     if assessment.hidden_damage:
         reasons.append(

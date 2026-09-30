@@ -1,336 +1,336 @@
 {
-  "_comment": "STUBBED pricing source. In production this is a live integration with a parts and labor pricing database or the carrier's negotiated vendor price lists. Flat rates below are indicative only and carry no regional, vehicle-specific or DRP-negotiated variation. This stub is isolated behind pricing.lookup() so the real integration replaces one function.",
-  "labour_rate_per_hour": 68.0,
+  "_comment": "STUBBED pricing source. In production this is a live integration with a parts and labor pricing database or the carrier's negotiated vendor price lists. Flat rates below are indicative only and carry no regional, vehicle-specific or DRP-negotiated variation. This stub is isolated behind pricing.price_line() so the real integration replaces one function.",
+  "labor_rate_per_hour": 68.0,
   "paint_rate_per_hour": 62.0,
   "operations": {
     "replace|front_bumper": {
       "part": 495.0,
-      "labour_hours": 2.4,
+      "labor_hours": 2.4,
       "paint_hours": 2.8
     },
     "replace|rear_bumper": {
       "part": 465.0,
-      "labour_hours": 2.2,
+      "labor_hours": 2.2,
       "paint_hours": 2.6
     },
     "replace|front_grille": {
       "part": 310.0,
-      "labour_hours": 1.1,
+      "labor_hours": 1.1,
       "paint_hours": 0.0
     },
     "replace|hood": {
       "part": 620.0,
-      "labour_hours": 1.8,
+      "labor_hours": 1.8,
       "paint_hours": 3.2
     },
     "replace|left_front_fender": {
       "part": 385.0,
-      "labour_hours": 2.0,
+      "labor_hours": 2.0,
       "paint_hours": 2.6
     },
     "replace|right_front_fender": {
       "part": 385.0,
-      "labour_hours": 2.0,
+      "labor_hours": 2.0,
       "paint_hours": 2.6
     },
     "replace|left_front_door": {
       "part": 780.0,
-      "labour_hours": 3.1,
+      "labor_hours": 3.1,
       "paint_hours": 3.0
     },
     "replace|right_front_door": {
       "part": 780.0,
-      "labour_hours": 3.1,
+      "labor_hours": 3.1,
       "paint_hours": 3.0
     },
     "replace|left_quarter_panel": {
       "part": 640.0,
-      "labour_hours": 6.5,
+      "labor_hours": 6.5,
       "paint_hours": 3.4
     },
     "replace|right_quarter_panel": {
       "part": 640.0,
-      "labour_hours": 6.5,
+      "labor_hours": 6.5,
       "paint_hours": 3.4
     },
     "replace|trunk_lid": {
       "part": 540.0,
-      "labour_hours": 1.9,
+      "labor_hours": 1.9,
       "paint_hours": 2.8
     },
     "replace|left_mirror": {
       "part": 295.0,
-      "labour_hours": 0.7,
+      "labor_hours": 0.7,
       "paint_hours": 0.5
     },
     "replace|right_mirror": {
       "part": 295.0,
-      "labour_hours": 0.7,
+      "labor_hours": 0.7,
       "paint_hours": 0.5
     },
     "repair|front_bumper": {
       "part": 0.0,
-      "labour_hours": 2.0,
+      "labor_hours": 2.0,
       "paint_hours": 2.4
     },
     "repair|rear_bumper": {
       "part": 0.0,
-      "labour_hours": 1.8,
+      "labor_hours": 1.8,
       "paint_hours": 2.2
     },
     "repair|hood": {
       "part": 0.0,
-      "labour_hours": 2.6,
+      "labor_hours": 2.6,
       "paint_hours": 3.0
     },
     "repair|left_front_fender": {
       "part": 0.0,
-      "labour_hours": 2.2,
+      "labor_hours": 2.2,
       "paint_hours": 2.4
     },
     "repair|right_front_fender": {
       "part": 0.0,
-      "labour_hours": 2.2,
+      "labor_hours": 2.2,
       "paint_hours": 2.4
     },
     "repair|left_front_door": {
       "part": 0.0,
-      "labour_hours": 2.8,
+      "labor_hours": 2.8,
       "paint_hours": 2.6
     },
     "repair|right_front_door": {
       "part": 0.0,
-      "labour_hours": 2.8,
+      "labor_hours": 2.8,
       "paint_hours": 2.6
     },
     "repair|left_rear_door": {
       "part": 0.0,
-      "labour_hours": 2.6,
+      "labor_hours": 2.6,
       "paint_hours": 2.5
     },
     "repair|right_rear_door": {
       "part": 0.0,
-      "labour_hours": 2.6,
+      "labor_hours": 2.6,
       "paint_hours": 2.5
     },
     "repair|left_quarter_panel": {
       "part": 0.0,
-      "labour_hours": 3.4,
+      "labor_hours": 3.4,
       "paint_hours": 3.0
     },
     "repair|right_quarter_panel": {
       "part": 0.0,
-      "labour_hours": 3.4,
+      "labor_hours": 3.4,
       "paint_hours": 3.0
     },
     "repair|trunk_lid": {
       "part": 0.0,
-      "labour_hours": 2.4,
+      "labor_hours": 2.4,
       "paint_hours": 2.6
     },
     "refinish|front_bumper": {
       "part": 0.0,
-      "labour_hours": 0.0,
+      "labor_hours": 0.0,
       "paint_hours": 2.4
     },
     "refinish|rear_bumper": {
       "part": 0.0,
-      "labour_hours": 0.0,
+      "labor_hours": 0.0,
       "paint_hours": 2.2
     },
     "refinish|hood": {
       "part": 0.0,
-      "labour_hours": 0.0,
+      "labor_hours": 0.0,
       "paint_hours": 3.0
     },
     "refinish|left_front_fender": {
       "part": 0.0,
-      "labour_hours": 0.0,
+      "labor_hours": 0.0,
       "paint_hours": 2.4
     },
     "refinish|right_front_fender": {
       "part": 0.0,
-      "labour_hours": 0.0,
+      "labor_hours": 0.0,
       "paint_hours": 2.4
     },
     "refinish|left_front_door": {
       "part": 0.0,
-      "labour_hours": 0.0,
+      "labor_hours": 0.0,
       "paint_hours": 2.6
     },
     "refinish|right_front_door": {
       "part": 0.0,
-      "labour_hours": 0.0,
+      "labor_hours": 0.0,
       "paint_hours": 2.6
     },
     "refinish|left_rear_door": {
       "part": 0.0,
-      "labour_hours": 0.0,
+      "labor_hours": 0.0,
       "paint_hours": 2.5
     },
     "refinish|right_rear_door": {
       "part": 0.0,
-      "labour_hours": 0.0,
+      "labor_hours": 0.0,
       "paint_hours": 2.5
     },
     "refinish|left_quarter_panel": {
       "part": 0.0,
-      "labour_hours": 0.0,
+      "labor_hours": 0.0,
       "paint_hours": 3.0
     },
     "refinish|right_quarter_panel": {
       "part": 0.0,
-      "labour_hours": 0.0,
+      "labor_hours": 0.0,
       "paint_hours": 3.0
     },
     "refinish|trunk_lid": {
       "part": 0.0,
-      "labour_hours": 0.0,
+      "labor_hours": 0.0,
       "paint_hours": 2.6
     },
     "blend|left_front_door": {
       "part": 0.0,
-      "labour_hours": 0.0,
+      "labor_hours": 0.0,
       "paint_hours": 1.3
     },
     "blend|right_front_door": {
       "part": 0.0,
-      "labour_hours": 0.0,
+      "labor_hours": 0.0,
       "paint_hours": 1.3
     },
     "blend|left_rear_door": {
       "part": 0.0,
-      "labour_hours": 0.0,
+      "labor_hours": 0.0,
       "paint_hours": 1.3
     },
     "blend|right_rear_door": {
       "part": 0.0,
-      "labour_hours": 0.0,
+      "labor_hours": 0.0,
       "paint_hours": 1.3
     },
     "blend|left_quarter_panel": {
       "part": 0.0,
-      "labour_hours": 0.0,
+      "labor_hours": 0.0,
       "paint_hours": 1.5
     },
     "blend|right_quarter_panel": {
       "part": 0.0,
-      "labour_hours": 0.0,
+      "labor_hours": 0.0,
       "paint_hours": 1.5
     },
     "blend|left_front_fender": {
       "part": 0.0,
-      "labour_hours": 0.0,
+      "labor_hours": 0.0,
       "paint_hours": 1.3
     },
     "blend|right_front_fender": {
       "part": 0.0,
-      "labour_hours": 0.0,
+      "labor_hours": 0.0,
       "paint_hours": 1.3
     },
     "R&I|rear_bumper": {
       "part": 0.0,
-      "labour_hours": 1.1,
+      "labor_hours": 1.1,
       "paint_hours": 0.0
     },
     "R&I|front_bumper": {
       "part": 0.0,
-      "labour_hours": 1.2,
+      "labor_hours": 1.2,
       "paint_hours": 0.0
     },
     "R&I|left_mirror": {
       "part": 0.0,
-      "labour_hours": 0.4,
+      "labor_hours": 0.4,
       "paint_hours": 0.0
     },
     "R&I|right_mirror": {
       "part": 0.0,
-      "labour_hours": 0.4,
+      "labor_hours": 0.4,
       "paint_hours": 0.0
     },
     "R&I|trunk_lid": {
       "part": 0.0,
-      "labour_hours": 0.6,
+      "labor_hours": 0.6,
       "paint_hours": 0.0
     },
     "repair|left_front_wheel": {
       "part": 0.0,
-      "labour_hours": 1.6,
+      "labor_hours": 1.6,
       "paint_hours": 0.0
     },
     "refinish|left_front_wheel": {
       "part": 0.0,
-      "labour_hours": 0.4,
+      "labor_hours": 0.4,
       "paint_hours": 1.2
     },
     "replace|left_front_wheel": {
       "part": 780.0,
-      "labour_hours": 0.6,
+      "labor_hours": 0.6,
       "paint_hours": 0.0
     },
     "R&I|left_front_wheel": {
       "part": 0.0,
-      "labour_hours": 0.5,
+      "labor_hours": 0.5,
       "paint_hours": 0.0
     },
     "repair|right_front_wheel": {
       "part": 0.0,
-      "labour_hours": 1.6,
+      "labor_hours": 1.6,
       "paint_hours": 0.0
     },
     "refinish|right_front_wheel": {
       "part": 0.0,
-      "labour_hours": 0.4,
+      "labor_hours": 0.4,
       "paint_hours": 1.2
     },
     "replace|right_front_wheel": {
       "part": 780.0,
-      "labour_hours": 0.6,
+      "labor_hours": 0.6,
       "paint_hours": 0.0
     },
     "R&I|right_front_wheel": {
       "part": 0.0,
-      "labour_hours": 0.5,
+      "labor_hours": 0.5,
       "paint_hours": 0.0
     },
     "repair|left_rear_wheel": {
       "part": 0.0,
-      "labour_hours": 1.6,
+      "labor_hours": 1.6,
       "paint_hours": 0.0
     },
     "refinish|left_rear_wheel": {
       "part": 0.0,
-      "labour_hours": 0.4,
+      "labor_hours": 0.4,
       "paint_hours": 1.2
     },
     "replace|left_rear_wheel": {
       "part": 780.0,
-      "labour_hours": 0.6,
+      "labor_hours": 0.6,
       "paint_hours": 0.0
     },
     "R&I|left_rear_wheel": {
       "part": 0.0,
-      "labour_hours": 0.5,
+      "labor_hours": 0.5,
       "paint_hours": 0.0
     },
     "repair|right_rear_wheel": {
       "part": 0.0,
-      "labour_hours": 1.6,
+      "labor_hours": 1.6,
       "paint_hours": 0.0
     },
     "refinish|right_rear_wheel": {
       "part": 0.0,
-      "labour_hours": 0.4,
+      "labor_hours": 0.4,
       "paint_hours": 1.2
     },
     "replace|right_rear_wheel": {
       "part": 780.0,
-      "labour_hours": 0.6,
+      "labor_hours": 0.6,
       "paint_hours": 0.0
     },
     "R&I|right_rear_wheel": {
       "part": 0.0,
-      "labour_hours": 0.5,
+      "labor_hours": 0.5,
       "paint_hours": 0.0
     }
   }

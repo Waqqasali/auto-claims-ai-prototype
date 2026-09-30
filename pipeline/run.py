@@ -113,7 +113,9 @@ def run(
             damage_type=li.get("damage_type", ""),
             severity=li.get("severity", ""),
             reasoning=li.get("reasoning", ""),
-            confidence=float(li.get("confidence", 0.0)),
+            # A null or missing confidence is treated as zero, the most
+            # conservative reading, rather than crashing on float(None).
+            confidence=float(li.get("confidence") or 0.0),
         )
         for li in raw.get("line_items", [])
     ]

@@ -1,4 +1,9 @@
 """End-to-end smoke test across all seven demo claims. Mock provider, no key."""
+# Run against a throwaway runtime folder. These tests delete and plant ledger
+# and log entries, and must never touch a presenter's real demo data.
+import os as _os
+import tempfile as _tempfile
+_os.environ["CLAIMS_RUNTIME_DIR"] = _tempfile.mkdtemp(prefix="claims-test-")
 import glob, os, sys
 from pipeline import run, routing
 

@@ -18,7 +18,8 @@ Absence of provenance is NOT evidence of fraud. Most phones emit no C2PA
 Content Credentials, and ordinary messaging apps strip EXIF in transit.
 C2PA itself states it shows provenance history rather than proving
 authenticity. So missing metadata produces a CONFIDENCE REDUCTION, never a
-rejection. This module flags and routes to SIU. It never denies a claim.
+rejection. This module flags; referral to the Special Investigation Unit is
+the reviewer's decision, recorded as a rejection reason. It never denies a claim.
 Denial is a human decision with consequences under state unfair claims
 settlement practices statutes.
 
@@ -97,20 +98,26 @@ def screen(photo: Photo, ctx: ClaimContext, record_hash: bool = True) -> Photo:
 
     # --- 2. Capture time against the reported loss date -----------------
     if photo.capture_time:
-        earliest = ctx.loss_date - timedelta(days=CAPTURE_WINDOW_DAYS_BEFORE)
-        latest = ctx.loss_date + timedelta(days=CAPTURE_WINDOW_DAYS_AFTER)
+        # Compared by calendar date. Comparing a timestamp against midnight on
+        # the loss date produced "14 days after the loss, outside the 14-day
+        # window" for a photo taken on day 14, and "by 0 days" for the evening
+        # before.
+        days_after = (photo.capture_time.date() - ctx.loss_date.date()).days
 
-        if photo.capture_time < earliest:
-            delta = (ctx.loss_date - photo.capture_time).days
+        def _days(n):
+            return f"{n} day" + ("" if n == 1 else "s")
+
+        if days_after < -CAPTURE_WINDOW_DAYS_BEFORE:
+            delta = -days_after
             flags.append(
-                f"Capture time predates the reported loss by {delta} days "
+                f"Capture time predates the reported loss by {_days(delta)} "
                 f"({photo.capture_time:%Y-%m-%d} vs loss {ctx.loss_date:%Y-%m-%d}). "
                 "Damage cannot be photographed before it occurs."
             )
-        elif photo.capture_time > latest:
-            delta = (photo.capture_time - ctx.loss_date).days
+        elif days_after > CAPTURE_WINDOW_DAYS_AFTER:
+            delta = days_after
             flags.append(
-                f"Capture time is {delta} days after the reported loss, outside "
+                f"Capture time is {_days(delta)} after the reported loss, outside "
                 f"the {CAPTURE_WINDOW_DAYS_AFTER}-day window. Not suspicious on "
                 "its own; worth a reviewer's eye alongside the other signals."
             )
