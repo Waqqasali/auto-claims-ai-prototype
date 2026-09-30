@@ -487,6 +487,70 @@ else:
           f"{_sb.cross_stage_agreement:.2f}, rocker unpriced")
 
 
+# --------------------------------------------------------------------------
+# Reset demo data. runtime/ is gitignored, so it survives an unzip over an
+# existing folder. A ledger left from earlier testing, in which the Navigator
+# photos were once uploaded against a different claim, flags them as reused
+# when they are uploaded to CLM-1002 in the demo and knocks the happy path out
+# of verify. This plants exactly that state, proves it does the damage, then
+# proves the Reset button removes it.
+# --------------------------------------------------------------------------
+
+import json as _json  # noqa: E402
+
+_nav = [f"samples/navigator_wheel_{n}.jpg" for n in ("closeup", "angle", "context")]
+_stale = {_img.measure(p)["perceptual_hash"]: {"claim_id": "CLM-1001",
+                                               "filename": os.path.basename(p)}
+          for p in _nav}
+os.makedirs(_cfg.RUNTIME_DIR, exist_ok=True)
+with open(_cfg.PHASH_LEDGER, "w", encoding="utf-8") as _fh:
+    _json.dump(_stale, _fh)
+with open(_cfg.OVERRIDE_LOG, "w", encoding="utf-8") as _fh:
+    _fh.write('{"claim_id": "CLM-9999", "note": "left over from testing"}\n')
+
+_before = _run.run("CLM-1002", _nav, attempt=2, user_photos=True, record_hashes=False)
+if _before.decision.tier == "verify":
+    print("[FAIL] reset: stale ledger did not affect the Navigator claim, so "
+          "this test no longer demonstrates anything")
+    fails += 1
+else:
+    at = AppTest.from_file("app.py", default_timeout=120).run()
+    _btn = [b for b in at.sidebar.button if "Reset demo data" in b.label]
+    if at.exception:
+        # The planted log line deliberately lacks the current fields. The
+        # review screen must survive an old or damaged log, not crash on it.
+        print(f"[FAIL] reset: app crashed reading an old-format override log: "
+              f"{[e.message for e in at.exception]}")
+        fails += 1
+    elif not _btn:
+        print("[FAIL] reset: no Reset demo data button in the sidebar")
+        fails += 1
+    else:
+        _btn[0].click().run()
+        _led = {}
+        if os.path.exists(_cfg.PHASH_LEDGER):
+            with open(_cfg.PHASH_LEDGER, encoding="utf-8") as _fh:
+                _led = _json.load(_fh)
+        _planted = [h for h in _stale if _led.get(h, {}).get("claim_id") == "CLM-1001"]
+        _after = _run.run("CLM-1002", _nav, attempt=2, user_photos=True,
+                          record_hashes=False)
+        if at.exception:
+            print(f"[FAIL] reset: {[e.message for e in at.exception]}")
+            fails += 1
+        elif _planted:
+            print("[FAIL] reset: stale ledger entries survived the reset")
+            fails += 1
+        elif os.path.exists(_cfg.OVERRIDE_LOG):
+            print("[FAIL] reset: override log survived the reset")
+            fails += 1
+        elif _after.decision.tier != "verify":
+            print(f"[FAIL] reset: Navigator still {_after.decision.tier} after reset")
+            fails += 1
+        else:
+            print(f"[ OK ] reset    stale ledger took Navigator to "
+                  f"{_before.decision.tier}; after reset it verifies again")
+
+
 # A good score must not be unconditional: bad files still fail the checks.
 _bad = _run.run("CLM-1002", ["samples/bad_blurry.jpg", "samples/bad_dark.jpg"],
                 attempt=2, user_photos=True)

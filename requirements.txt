@@ -3,7 +3,8 @@
 # would break the demo silently. Versions below are the ones it was built and
 # tested against.
 
-streamlit>=1.40,<2.0        # tested against 1.64
+streamlit>=1.64,<2.0        # tested against 1.64. Earlier releases lack
+                            # theme keys and widget parameters this app uses
 pillow>=10.0,<13.0          # tested against 12.2
 imagehash>=4.3,<5.0         # tested against 4.3.2
 pandas>=2.0,<4.0            # tested against 3.0.2

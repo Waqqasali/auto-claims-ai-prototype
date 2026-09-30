@@ -17,6 +17,7 @@ auto-approved.
 
 import json
 import os
+import shutil
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -27,6 +28,7 @@ from config import (
     AUTHENTICITY_FLAG_PENALTY,
     MAX_REQUEST_ATTEMPTS,
     OVERRIDE_LOG,
+    PHASH_LEDGER,
     RUNTIME_DIR,
     TIER_STARTING_POINT_MIN,
     TIER_VERIFY_MIN,
@@ -222,8 +224,10 @@ with st.sidebar:
 
     attempt = st.radio(
         "Submission attempt", [1, 2], horizontal=True,
-        help="Attempt 2 is the resubmission. On CLM-1002 it answers the "
-             "three requested angles and the claim proceeds to an estimate.",
+        help="Attempt 2 is the resubmission. On CLM-1002 it starts empty, "
+             "awaiting the policyholder's photos: upload the three Navigator "
+             "photos from the samples folder and the claim proceeds to an "
+             "estimate.",
     )
 
     uploaded = st.file_uploader(
@@ -270,6 +274,24 @@ with st.sidebar:
              "by default: a claims agent needs the decision, not the argument "
              "behind it.",
     )
+
+    # Demo state lives in runtime/, which git ignores, so it survives a pull or
+    # an unzip over an existing folder. A reuse ledger left from earlier
+    # testing flags photos in a new session as "previously submitted on another
+    # claim", which can knock a clean claim out of its tier in front of an
+    # audience, and old test overrides reappear in the log. One click clears
+    # all of it before a demo.
+    if st.button(
+        "Reset demo data",
+        help="Clears the photo reuse ledger, the override log and uploaded "
+             "files. Use before a demo so nothing from earlier testing "
+             "affects what is on screen.",
+    ):
+        for _path in (PHASH_LEDGER, OVERRIDE_LOG):
+            if os.path.exists(_path):
+                os.remove(_path)
+        shutil.rmtree(os.path.join(RUNTIME_DIR, "uploads"), ignore_errors=True)
+        st.success("Demo data cleared.", icon="🧹")
 
 
 def rationale(text):
@@ -914,22 +936,38 @@ if submitted:
 # --- Accumulated override log -------------------------------------------
 if os.path.exists(OVERRIDE_LOG):
     with st.expander("Override log"):
+        # The log is a file on disk that outlives any one version of this app,
+        # so a line it cannot read is skipped and counted, never allowed to
+        # take down the review screen above it.
+        rows, unreadable = [], 0
         with open(OVERRIDE_LOG, encoding="utf-8") as fh:
-            rows = [json.loads(l) for l in fh if l.strip()]
-        st.caption(f"{len(rows)} decision(s) recorded across this session.")
+            for l in fh:
+                if not l.strip():
+                    continue
+                try:
+                    r = json.loads(l)
+                except json.JSONDecodeError:
+                    unreadable += 1
+                    continue
+                if isinstance(r, dict):
+                    rows.append(r)
+                else:
+                    unreadable += 1
+        st.caption(f"{len(rows)} decision(s) recorded across this session."
+                   + (f" {unreadable} unreadable line(s) skipped." if unreadable else ""))
         flat = []
         for r in rows:
-            if r["overrides"]:
-                for o in r["overrides"]:
-                    flat.append({
-                        "claim": r["claim_id"], "confidence": r["claim_confidence"],
-                        "tier": r["routing_tier"], "line": o["line"],
-                        "field": o["field"], "reason": o["reason_code"],
-                    })
+            base = {"claim": r.get("claim_id", "?"),
+                    "confidence": r.get("claim_confidence"),
+                    "tier": r.get("routing_tier", "?")}
+            overrides = r.get("overrides") or []
+            if overrides:
+                for o in overrides:
+                    flat.append({**base, "line": o.get("line", "?"),
+                                 "field": o.get("field", "?"),
+                                 "reason": o.get("reason_code", "?")})
             else:
-                flat.append({
-                    "claim": r["claim_id"], "confidence": r["claim_confidence"],
-                    "tier": r["routing_tier"], "line": "—", "field": "—",
-                    "reason": "no change",
-                })
-        st.dataframe(pd.DataFrame(flat), hide_index=True, width='stretch')
+                flat.append({**base, "line": "—", "field": "—",
+                             "reason": "no change"})
+        if flat:
+            st.dataframe(pd.DataFrame(flat), hide_index=True, width='stretch')
