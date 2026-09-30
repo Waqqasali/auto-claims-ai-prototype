@@ -126,6 +126,10 @@ class ConfidenceBreakdown:
     retrieval_density: float = 0.0
     cross_stage_agreement: float = 0.0
     adas_penalty: float = 0.0          # subtracted, not multiplied
+    authenticity_penalty: float = 0.0  # likewise. Exposed so the UI can show
+                                       # it: a penalty visible only inside an
+                                       # expander makes the summary arithmetic
+                                       # look wrong.
     line_item_floor: float = 0.0       # lowest per-item confidence
     claim_confidence: float = 0.0
     explanation: list[str] = field(default_factory=list)

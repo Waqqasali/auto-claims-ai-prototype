@@ -219,5 +219,101 @@ for label, delta, outcome, reject_reason, codes, should_enable in GATING:
     print(f"[ OK ] gating {label:26} "
           f"button={'enabled' if enabled else 'disabled'}")
 
+# --------------------------------------------------------------------------
+# Section order and tooltips. Confidence must render AFTER the estimate: the
+# score is only defensible once the reviewer has seen the line items and the
+# coverage score it was computed from. Ordering is easy to undo by accident in
+# a single-file Streamlit script, so it is asserted rather than assumed.
+# --------------------------------------------------------------------------
+
+at = AppTest.from_file("app.py", default_timeout=120).run()
+at.sidebar.selectbox[0].set_value("CLM-1001").run()
+
+if at.exception:
+    print(f"[FAIL] order: {[e.message for e in at.exception]}")
+    fails += 1
+else:
+    heads = [str(getattr(h, "value", "") or getattr(h, "body", ""))
+             for h in at.subheader]
+
+    def idx(needle):
+        return next((i for i, h in enumerate(heads) if needle in h), None)
+
+    i_ev, i_est, i_conf = idx("Evidence"), idx("Draft estimate"), idx("Confidence")
+    if None in (i_ev, i_est, i_conf):
+        print(f"[FAIL] order: a section is missing. Found: {heads}")
+        fails += 1
+    elif not i_ev < i_est < i_conf:
+        print(f"[FAIL] order: expected Evidence < Draft estimate < Confidence, "
+              f"got {i_ev} < {i_est} < {i_conf}")
+        fails += 1
+    else:
+        print(f"[ OK ] order  Evidence({i_ev}) -> estimate({i_est}) "
+              f"-> confidence({i_conf})")
+
+    # Every score on the page must carry an explanation of what produced it.
+    labels = {str(getattr(m, "label", "")): getattr(m, "help", None)
+              for m in at.metric}
+    want = ["Claim confidence", "Weakest line item", "Evidence coverage",
+            "Retrieval density", "Cross-stage agreement"]
+    missing = [w for w in want if not labels.get(w)]
+    if missing:
+        print(f"[FAIL] tooltips: no help text on {missing}")
+        fails += 1
+    else:
+        print(f"[ OK ] tooltips  {len(want)} scores carry help text")
+
+    # Coverage is shown twice by design: under the photographs it measured,
+    # and again as a confidence signal. Both must be present.
+    if sum(1 for m in at.metric
+           if "Evidence coverage" in str(getattr(m, "label", ""))) < 2:
+        print("[FAIL] coverage: not shown both under Evidence and in Confidence")
+        fails += 1
+    else:
+        print("[ OK ] coverage  shown under the evidence and as a signal")
+
+
+# --------------------------------------------------------------------------
+# The Navigator resubmission is the happy path in the demo, so the numbers it
+# produces are pinned. 0.88 coverage is set deliberately to match the weakest
+# line item; if either drifts the demo silently changes tier.
+# --------------------------------------------------------------------------
+
+from pipeline import run as _run  # noqa: E402
+
+_paths = [f"samples/navigator_wheel_{n}.jpg"
+          for n in ("closeup", "angle", "context")]
+_r = _run.run("CLM-1002", _paths, attempt=2, user_photos=True)
+_b = _r.confidence
+_sig = (_b.line_item_floor, _b.evidence_coverage,
+        _b.retrieval_density, _b.cross_stage_agreement)
+
+if _r.decision.tier != "verify":
+    print(f"[FAIL] navigator: tier is {_r.decision.tier}, expected verify")
+    fails += 1
+elif (_b.evidence_coverage, _b.line_item_floor) != (0.88, 0.88):
+    print(f"[FAIL] navigator: coverage/floor are "
+          f"{_b.evidence_coverage}/{_b.line_item_floor}, expected 0.88/0.88")
+    fails += 1
+elif min(_sig) < 0.80:
+    # Anchoring on the weakest signal must reach the same tier as the weighted
+    # sum, or the demo depends on which formula is in force.
+    print(f"[FAIL] navigator: weakest signal {min(_sig):.2f} would not verify")
+    fails += 1
+else:
+    print(f"[ OK ] navigator  weighted {_b.claim_confidence:.2f} / "
+          f"anchored {min(_sig):.2f}, both verify")
+
+# A good score must not be unconditional: bad files still fail the checks.
+_bad = _run.run("CLM-1002", ["samples/bad_blurry.jpg", "samples/bad_dark.jpg"],
+                attempt=2, user_photos=True)
+if _bad.evidence.coverage_score > 0.40:
+    print(f"[FAIL] navigator: blurry upload scored "
+          f"{_bad.evidence.coverage_score:.2f}; the quality clamp did not hold")
+    fails += 1
+else:
+    print("[ OK ] navigator  blurry upload still clamped to 0.40")
+
+
 print("FAILURES:", fails)
 sys.exit(1 if fails else 0)

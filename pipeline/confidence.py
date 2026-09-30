@@ -118,7 +118,9 @@ def compute(
         )
 
     # --- Authenticity -----------------------------------------------------
+    authenticity_penalty = 0.0
     if authenticity_flags:
+        authenticity_penalty = AUTHENTICITY_FLAG_PENALTY
         score -= AUTHENTICITY_FLAG_PENALTY
         explanation.append(
             f"Authenticity penalty -{AUTHENTICITY_FLAG_PENALTY:.2f}: "
@@ -134,6 +136,7 @@ def compute(
         retrieval_density=round(retrieval_density, 3),
         cross_stage_agreement=round(cross_stage_agreement, 3),
         adas_penalty=round(adas_penalty, 3),
+        authenticity_penalty=round(authenticity_penalty, 3),
         line_item_floor=round(floor, 3),
         claim_confidence=round(score, 3),
         explanation=explanation,

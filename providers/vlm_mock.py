@@ -208,6 +208,23 @@ _GENERIC_COVERAGE = {
     "notes": "MOCK MODE: generic coverage response for an unscripted claim.",
 }
 
+# Coverage to assume in mock mode when a real upload arrives against a claim
+# whose evidence request is already on record.
+#
+# The generic 0.75 above is a "we have no idea what you sent" number, right for
+# a claim that never asked for anything specific. CLM-1002 did ask: attempt 1
+# named three angles (the rim face square on, the inner sidewall, and the wheel
+# in context on the vehicle). A resubmission of three files that pass the
+# deterministic checks answers that request, so coverage is higher than generic.
+#
+# 0.88 is a placeholder in exactly the same sense as every other number in this
+# module. It is set to the same value as the weakest line item so the happy path
+# reads identically whether confidence is combined by weighted sum or anchored
+# on the weakest signal, which keeps the demo honest under either formula.
+_UPLOAD_COVERAGE: dict[str, float] = {
+    "CLM-1002": 0.88,
+}
+
 _GENERIC_DAMAGE = {
     "line_items": [
         {
@@ -259,6 +276,17 @@ class MockVLM(VLMProvider):
     def assess_coverage(self, photos, ctx: ClaimContext, panel_vocabulary):
         script = self._script_for(ctx, "coverage")
         base = dict(script["coverage"]) if script else dict(_GENERIC_COVERAGE)
+
+        # An upload against a claim with a known evidence request scores
+        # against that request rather than against nothing. See _UPLOAD_COVERAGE.
+        if getattr(ctx, "user_supplied_photos", False):
+            expected = _UPLOAD_COVERAGE.get(ctx.claim_id)
+            if expected is not None:
+                base["coverage_score"] = expected
+                base["notes"] = (
+                    "MOCK MODE: uploaded files scored against the evidence "
+                    "request already issued on this claim."
+                )
 
         # Honour reality: if the actual files fail the deterministic quality
         # checks, the mock must not pretend coverage is fine. This keeps the

@@ -23,6 +23,8 @@ import pandas as pd
 import streamlit as st
 
 from config import (
+    ADAS_CONFIDENCE_PENALTY,
+    AUTHENTICITY_FLAG_PENALTY,
     MAX_REQUEST_ATTEMPTS,
     OVERRIDE_LOG,
     RUNTIME_DIR,
@@ -118,6 +120,75 @@ TIER_STYLE = {
 
 INK, MUTED, BORDER = "#0D1B2A", "#4A6580", "#DEE5EE"
 CONFIDENCE_BAR = "#4A6580"   # magnitude, never judgement. Not the orange accent.
+
+
+# --------------------------------------------------------------------------
+# Tooltip text
+# --------------------------------------------------------------------------
+# A reviewer being asked to trust a number is entitled to know what produced
+# it without leaving the screen. Every score on this page carries one of these.
+
+HELP_CLAIM_CONFIDENCE = (
+    "The composite of the four signals below, less any fixed penalties. It "
+    "decides the routing tier only. No tier approves, denies or pays anything "
+    "on its own.\n\n"
+    "Weights and thresholds are placeholders. In production they are set by "
+    "retrospective calibration against historical claims whose final cost, "
+    "including any supplement, is already known."
+)
+
+HELP_LINE_ITEM_FLOOR = (
+    "The lowest per-line confidence in the estimate.\n\n"
+    "Each line carries the model's confidence in the determination it made for "
+    "that line: that this operation, on this part, at this severity, is what "
+    "the damage actually requires.\n\n"
+    "The claim is anchored on the lowest of them rather than the average. Ten "
+    "lines at 0.90 and one at 0.60 is not a 0.87 claim, because one wrong line "
+    "ruins an estimate, and the weak line is usually the sensor or structural "
+    "item that generates the supplement."
+)
+
+HELP_EVIDENCE_COVERAGE = (
+    "How adequately the photographs cover every damaged zone: whether each "
+    "angle the assessment needs is actually present, and whether every file "
+    "passes the deterministic sharpness, resolution and exposure checks.\n\n"
+    "A file that fails those checks caps this signal at 0.40 regardless of "
+    "what the model says about it. The measurement overrides the opinion."
+)
+
+HELP_RETRIEVAL_DENSITY = (
+    "How many closely comparable historical claims exist for this vehicle, "
+    "panel and damage pattern.\n\n"
+    "Dense comparables mean the scope and pricing rest on precedent. Sparse "
+    "comparables mean the estimate is an extrapolation and should be treated "
+    "as one.\n\n"
+    "Stubbed in this build: the comparables corpus is not connected, so this "
+    "reads 1.00 wherever the price table has an entry."
+)
+
+HELP_CROSS_STAGE_AGREEMENT = (
+    "Whether the line items the damage stage identified map cleanly onto "
+    "priceable operations in the costing stage.\n\n"
+    "An item that cannot be priced is two stages disagreeing about what the "
+    "damage is, which is a stronger warning than either stage reporting low "
+    "confidence on its own."
+)
+
+HELP_PENALTIES = (
+    "Penalties are fixed subtractions applied after the signals are combined, "
+    "not signals averaged in with them.\n\n"
+    f"ADAS calibration zone touched: −{ADAS_CONFIDENCE_PENALTY:.2f}\n\n"
+    f"Media authenticity flag raised: −{AUTHENTICITY_FLAG_PENALTY:.2f}\n\n"
+    "Hidden damage candidates: no penalty in this build. The signal fires on "
+    "nearly every claim, and weighting it without observed rates from a real "
+    "claims corpus would be inventing evidence."
+)
+
+HELP_LINE_CONFIDENCE_COLUMN = (
+    "The model's confidence in the determination made for this line: that this "
+    "operation, on this part, at this severity, is what the damage requires. "
+    "It is not a confidence in the price."
+)
 
 
 # --------------------------------------------------------------------------
@@ -388,6 +459,34 @@ for i, photo in enumerate(result.photos):
         for flag in photo.authenticity_flags:
             st.warning(flag, icon="🔍")
 
+# The coverage score belongs here, under the files it was measured from, not
+# only in the confidence panel further down. A reviewer looking at three
+# photographs and deciding whether they are enough should see the system's
+# answer to that question in the same place.
+if result.evidence:
+    ev = result.evidence
+    st.markdown("")
+    ec1, ec2 = st.columns([1, 3])
+    with ec1:
+        st.metric(
+            "Evidence coverage",
+            f"{ev.coverage_score:.2f}",
+            help=HELP_EVIDENCE_COVERAGE,
+        )
+    with ec2:
+        st.caption(
+            f"**{len(result.photos)} file(s)** assessed · "
+            f"{sum(1 for p in result.photos if p.quality_ok)} passed the "
+            f"deterministic quality checks"
+        )
+        if ev.missing:
+            st.caption("**Still missing:** " + "; ".join(ev.missing))
+        else:
+            st.caption(
+                "No further angles requested. This score feeds claim "
+                "confidence below the estimate."
+            )
+
 if result.evidence and result.evidence.status == "re_request":
     st.divider()
     st.subheader("Message sent to the policyholder")
@@ -429,61 +528,6 @@ if result.evidence and result.evidence.status == "escalate":
         "to give up is a product decision, not a failure mode."
     )
     st.stop()
-
-
-# --------------------------------------------------------------------------
-# Confidence
-# --------------------------------------------------------------------------
-
-st.divider()
-st.subheader("Confidence")
-
-conf = result.confidence
-cc1, cc2 = st.columns([1, 2])
-with cc1:
-    st.metric("Claim confidence", f"{conf.claim_confidence:.2f}")
-    st.caption(
-        f"verify ≥ {TIER_VERIFY_MIN:.2f} · starting point ≥ "
-        f"{TIER_STARTING_POINT_MIN:.2f}"
-    )
-    st.caption("⚠️ Thresholds are placeholders, not calibrated.")
-    rationale(
-        "In production they are set by retrospective calibration against "
-        "historical claims whose final cost, including any supplement, is "
-        "already known. Naming a number before that data exists would be "
-        "inventing a fact."
-    )
-with cc2:
-    st.dataframe(
-        pd.DataFrame(
-            [
-                {"signal": "weakest line item", "value": conf.line_item_floor},
-                {"signal": "evidence coverage", "value": conf.evidence_coverage},
-                {"signal": "retrieval density", "value": conf.retrieval_density},
-                {"signal": "cross-stage agreement", "value": conf.cross_stage_agreement},
-            ]
-        ),
-        hide_index=True,
-        width='stretch',
-        column_config={
-            "value": st.column_config.NumberColumn("value", format="%.2f"),
-        },
-    )
-    # A penalty is subtracted from the weighted sum, not averaged in with it,
-    # so showing it as a fifth signal would misdescribe the arithmetic.
-    if conf.adas_penalty:
-        st.caption(
-            f"Less a fixed **{conf.adas_penalty:.2f}** ADAS calibration penalty."
-        )
-
-with st.expander("Show the arithmetic"):
-    for line in conf.explanation:
-        st.markdown(f"- {line}")
-    st.caption(
-        "Anchored on the weakest line item rather than the mean. Ten items at "
-        "0.90 and one at 0.60 is not a 0.87 claim — one badly wrong line ruins "
-        "an estimate, and averaging buries exactly the item that matters."
-    )
 
 
 # --------------------------------------------------------------------------
@@ -570,6 +614,7 @@ edited = st.data_editor(
         "confidence": st.column_config.ProgressColumn(
             "confidence", min_value=0.0, max_value=1.0, format="%.2f",
             color=CONFIDENCE_BAR,
+            help=HELP_LINE_CONFIDENCE_COLUMN,
         ),
         "priced": st.column_config.CheckboxColumn(
             "priced", disabled=True,
@@ -594,6 +639,81 @@ with st.expander("Why the model proposed each line"):
         "Reasoning is what makes an override meaningful. A reviewer cannot "
         "sensibly disagree with a number that carries no explanation."
     )
+
+
+# --------------------------------------------------------------------------
+# Confidence
+# --------------------------------------------------------------------------
+# Deliberately placed AFTER the estimate. Every input to this score is
+# something the reviewer has now seen: the per-line confidences in the table
+# above, the coverage score under the photographs, the priced column. Shown
+# before the estimate it is four numbers from nowhere, and a reviewer who
+# cannot trace a score has been handed an instruction rather than a signal.
+
+st.divider()
+st.subheader("Confidence in the estimate above")
+
+conf = result.confidence
+cc1, cc2 = st.columns([1, 2])
+with cc1:
+    st.metric(
+        "Claim confidence",
+        f"{conf.claim_confidence:.2f}",
+        help=HELP_CLAIM_CONFIDENCE,
+    )
+    st.caption(
+        f"verify ≥ {TIER_VERIFY_MIN:.2f} · starting point ≥ "
+        f"{TIER_STARTING_POINT_MIN:.2f}"
+    )
+    st.caption("⚠️ Thresholds are placeholders, not calibrated.")
+    rationale(
+        "In production they are set by retrospective calibration against "
+        "historical claims whose final cost, including any supplement, is "
+        "already known. Naming a number before that data exists would be "
+        "inventing a fact."
+    )
+with cc2:
+    # Metrics rather than a dataframe, because a dataframe cannot carry a
+    # per-row tooltip and every one of these four needs its own explanation.
+    s1, s2 = st.columns(2)
+    s3, s4 = st.columns(2)
+    with s1:
+        st.metric("Weakest line item", f"{conf.line_item_floor:.2f}",
+                  help=HELP_LINE_ITEM_FLOOR)
+    with s2:
+        st.metric("Evidence coverage", f"{conf.evidence_coverage:.2f}",
+                  help=HELP_EVIDENCE_COVERAGE)
+    with s3:
+        st.metric("Retrieval density", f"{conf.retrieval_density:.2f}",
+                  help=HELP_RETRIEVAL_DENSITY)
+    with s4:
+        st.metric("Cross-stage agreement", f"{conf.cross_stage_agreement:.2f}",
+                  help=HELP_CROSS_STAGE_AGREEMENT)
+
+    # A penalty is subtracted after the signals are combined, not averaged in
+    # with them, so showing either as a fifth signal would misdescribe the
+    # arithmetic. Both are shown here rather than only inside the expander:
+    # a penalty a reviewer cannot see makes the summary look like bad addition.
+    penalties = []
+    if conf.adas_penalty:
+        penalties.append(f"ADAS calibration −{conf.adas_penalty:.2f}")
+    if conf.authenticity_penalty:
+        penalties.append(f"media authenticity −{conf.authenticity_penalty:.2f}")
+    if penalties:
+        st.caption("**Penalties applied:** " + " · ".join(penalties),
+                   help=HELP_PENALTIES)
+    else:
+        st.caption("**No penalties applied.**", help=HELP_PENALTIES)
+
+with st.expander("Show the arithmetic"):
+    for line in conf.explanation:
+        st.markdown(f"- {line}")
+    st.caption(
+        "Anchored on the weakest line item rather than the mean. Ten items at "
+        "0.90 and one at 0.60 is not a 0.87 claim — one badly wrong line ruins "
+        "an estimate, and averaging buries exactly the item that matters."
+    )
+
 
 # --- Detect changes ------------------------------------------------------
 # Read the editor's own delta rather than diffing dataframes. Once rows can be
