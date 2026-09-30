@@ -31,6 +31,8 @@ the final cost including any supplement is already known. This
 module deliberately does not pretend otherwise.
 """
 
+from decimal import ROUND_HALF_UP, Decimal
+
 from config import (
     ADAS_CONFIDENCE_PENALTY,
     AUTHENTICITY_PENALTY,
@@ -40,6 +42,40 @@ from config import (
     W_RETRIEVAL_DENSITY,
 )
 from pipeline.models import Assessment, ConfidenceBreakdown
+
+# What each authenticity flag means, in words a reviewer reads once and
+# understands. Keyed by the same prefixes authenticity.flag_strength() uses.
+_FLAG_REASON = (
+    ("Visually near-identical", "closely matches a photo already submitted on "
+     "another claim"),
+    ("Capture time predates", "was taken before the reported accident"),
+    ("Metadata names editing software", "was saved by photo editing software"),
+    ("Capture time is", "was taken well after the reported accident"),
+    ("No EXIF metadata", "has no camera metadata, so its date and device "
+     "cannot be checked"),
+)
+
+_STRENGTH_NOTE = {
+    "strong": "That is a strong signal, so this claim cannot be marked verify.",
+    "moderate": "That is a moderate signal: worth a look, often innocent.",
+    "weak": "That is a weak signal: messaging apps remove this data from most "
+            "photos.",
+}
+
+
+def _flag_reason(flag: str) -> str:
+    for prefix, reason in _FLAG_REASON:
+        if flag.startswith(prefix):
+            return reason
+    return "raised a media authenticity flag"
+
+
+def _d(x: float) -> Decimal:
+    return Decimal(repr(float(x)))
+
+
+def _fmt(x: Decimal) -> str:
+    return f"{x:.2f}"
 
 
 def compute(
@@ -92,41 +128,55 @@ def compute(
             if excluded else ""
         )
         explanation.append(
-            f"Weakest line item is '{weakest.operation} {weakest.part}' at "
-            f"{floor:.2f}. Claim confidence is anchored here rather than on the "
+            f"Weakest line item: '{weakest.operation} {weakest.part}' at "
+            f"{floor:.2f}. The score starts from the weakest line, not the "
             f"average, because one wrong line ruins an estimate.{note}"
         )
     else:
         floor = 0.0
         explanation.append("No line items produced; confidence floor is 0.")
 
-    base = (
-        W_LINE_ITEM_FLOOR * floor
-        + W_EVIDENCE_COVERAGE * evidence_coverage
-        + W_RETRIEVAL_DENSITY * retrieval_density
-        + W_CROSS_STAGE_AGREEMENT * cross_stage_agreement
-    )
+    # Scores are stated to two decimals, the precision the thresholds use, and
+    # routing uses the value shown. Two defects this prevents: floats rounded
+    # separately showed "0.863 - 0.05 = 0.812" (the base was 0.8625, the
+    # result 0.8125), so the arithmetic looked wrong on screen; and a claim at
+    # 0.7950 would have displayed as 0.80 while routing below verify. Penalties
+    # are whole hundredths, so rounding the base and then subtracting always
+    # agrees with what is shown.
+    exact = (
+        _d(W_LINE_ITEM_FLOOR) * _d(floor)
+        + _d(W_EVIDENCE_COVERAGE) * _d(evidence_coverage)
+        + _d(W_RETRIEVAL_DENSITY) * _d(retrieval_density)
+        + _d(W_CROSS_STAGE_AGREEMENT) * _d(cross_stage_agreement)
+    ).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+    base = exact.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     explanation.append(
-        f"Base = {W_LINE_ITEM_FLOOR}x floor({floor:.2f}) + "
-        f"{W_EVIDENCE_COVERAGE}x coverage({evidence_coverage:.2f}) + "
-        f"{W_RETRIEVAL_DENSITY}x retrieval({retrieval_density:.2f}) + "
-        f"{W_CROSS_STAGE_AGREEMENT}x agreement({cross_stage_agreement:.2f}) "
-        f"= {base:.3f}"
+        f"Base score = {W_LINE_ITEM_FLOOR} × weakest line {floor:.2f} + "
+        f"{W_EVIDENCE_COVERAGE} × coverage {evidence_coverage:.2f} + "
+        f"{W_RETRIEVAL_DENSITY} × retrieval {retrieval_density:.2f} + "
+        f"{W_CROSS_STAGE_AGREEMENT} × agreement {cross_stage_agreement:.2f} "
+        + (f"= {_fmt(base)}" if exact == base
+           else f"= {exact:.4f}, which rounds to {_fmt(base)}")
     )
 
     score = base
+    subtractions: list[str] = []
+    notes: list[str] = []
 
     # --- ADAS penalty ----------------------------------------------------
     adas_penalty = 0.0
     if adas_hits:
         adas_penalty = ADAS_CONFIDENCE_PENALTY
-        score -= adas_penalty
+        score -= _d(adas_penalty)
+        subtractions.append(f"{adas_penalty:.2f}")
         panels = ", ".join(h["panel"].replace("_", " ") for h in adas_hits)
         explanation.append(
-            f"ADAS penalty -{adas_penalty:.2f}: damage touches {panels}, which "
-            f"carries sensors on this vehicle. Calibration need cannot be "
-            f"confirmed from photographs, and 51.5% of calibrations industry-wide "
-            f"appear on supplements rather than initial estimates."
+            f"Minus {adas_penalty:.2f} for sensor calibration risk. The damage "
+            f"touches the {panels}, which "
+            f"{'carries' if len(adas_hits) == 1 else 'carry'} sensors on this "
+            f"vehicle. Photographs cannot show whether recalibration is needed, "
+            f"and 51.5% of calibrations industry-wide appear only on "
+            f"supplements, not on the first estimate."
         )
 
     # --- Hidden damage candidates ----------------------------------------
@@ -144,12 +194,12 @@ def compute(
     # So in the MVP these are surfaced to the reviewer as information, and the
     # penalty is switched on — rate-weighted — once comparables are real.
     if assessment.hidden_damage:
-        explanation.append(
-            f"{len(assessment.hidden_damage)} hidden damage candidate(s) shown "
-            f"to the reviewer for information. No confidence penalty applied: "
-            f"without observed rates from a real claims corpus any weight would "
-            f"be arbitrary, and the signal fires on nearly every claim. Becomes "
-            f"rate-weighted when comparables are connected."
+        notes.append(
+            f"Not scored: {len(assessment.hidden_damage)} hidden damage "
+            f"candidate(s) are shown to the reviewer for information only. "
+            f"Without observed rates from a real claims corpus any weight would "
+            f"be arbitrary, and the signal fires on nearly every claim. It "
+            f"becomes rate-weighted when comparables are connected."
         )
 
     # --- Authenticity -----------------------------------------------------
@@ -159,16 +209,30 @@ def compute(
         strongest = max((flag_strength(f) for f in authenticity_flags),
                         key=lambda s: AUTHENTICITY_PENALTY[s])
         authenticity_penalty = AUTHENTICITY_PENALTY[strongest]
-        score -= authenticity_penalty
+        score -= _d(authenticity_penalty)
+        subtractions.append(f"{authenticity_penalty:.2f}")
+        # Flags arrive de-duplicated across photos, so the count of photos
+        # behind a flag is not known here. "At least one" is always true.
+        top = next(f for f in authenticity_flags if flag_strength(f) == strongest)
         explanation.append(
-            f"Authenticity penalty -{authenticity_penalty:.2f}: "
-            f"{len(authenticity_flags)} media flag(s), the strongest {strongest}. "
-            f"Scaled to the strongest signal, not the count. It never denies "
-            f"a claim."
+            f"Minus {authenticity_penalty:.2f} for media authenticity. At least "
+            f"one photo {_flag_reason(top)} (see the photo cards above). "
+            f"{_STRENGTH_NOTE[strongest]} Only the most serious flag on a claim "
+            f"counts, and a flag never denies a claim."
         )
 
-    score = max(0.0, min(1.0, score))
-    explanation.append(f"Claim confidence = {score:.3f}")
+    score = max(Decimal("0"), min(Decimal("1"), score))
+    if subtractions:
+        explanation.append(
+            f"Claim confidence = {_fmt(base)} − {' − '.join(subtractions)} "
+            f"= {_fmt(score)}"
+            + (" (a score cannot go below zero)" if score == 0 else "")
+        )
+    else:
+        explanation.append(
+            f"Claim confidence = {_fmt(score)} (no penalties applied)")
+    explanation.extend(notes)
+    score = float(score)
 
     return ConfidenceBreakdown(
         evidence_coverage=round(evidence_coverage, 3),
@@ -177,6 +241,6 @@ def compute(
         adas_penalty=round(adas_penalty, 3),
         authenticity_penalty=round(authenticity_penalty, 3),
         line_item_floor=round(floor, 3),
-        claim_confidence=round(score, 3),
+        claim_confidence=round(score, 2),
         explanation=explanation,
     )
