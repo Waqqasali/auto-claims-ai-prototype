@@ -9,21 +9,24 @@ _os.environ["CLAIMS_RUNTIME_DIR"] = _tempfile.mkdtemp(prefix="claims-test-")
 # overrides a variable that is already set.
 _os.environ["VLM_PROVIDER"] = "mock"
 import glob, os, sys
+from config import SCENARIO_PHOTOS
 from pipeline import run, routing
 
 S = os.path.join(os.path.dirname(os.path.abspath(__file__)), "samples")
 def s(*names): return [os.path.join(S, n) for n in names]
+# Each claim's own demo photos, from the one list the app uses.
+def demo(claim_id): return s(*SCENARIO_PHOTOS[(claim_id, 1)])
 
 CASES = [
-    ("CLM-1001", s("mazda6_front.jpg", "mazda6_corner.jpg", "mazda6_damage.jpg"), 1),
-    ("CLM-1002", s("bad_blurry.jpg", "bad_dark.jpg", "bad_lowres.jpg"), 1),
+    ("CLM-1001", demo("CLM-1001"), 1),
+    ("CLM-1002", demo("CLM-1002"), 1),
     ("CLM-1002", s("bad_blurry.jpg", "bad_dark.jpg"), 2),   # attempt cap
-    ("CLM-1003", s("bumper_a.jpg", "bumper_b.jpg", "bumper_c.jpg"), 1),
-    ("CLM-1004", s("stale_timestamp.jpg", "stale_timestamp_2.jpg"), 1),
-    ("CLM-1005", s("good_a.jpg"), 1),
-    ("CLM-1006", s("good_a.jpg"), 1),
-    ("CLM-1007", s("sideswipe_a.jpg", "sideswipe_b.jpg", "sideswipe_c.jpg"), 1),
-    ("CLM-1008", s("edited_door.jpg", "ai_generated_door.jpg"), 1),
+    ("CLM-1003", demo("CLM-1003"), 1),
+    ("CLM-1004", demo("CLM-1004"), 1),
+    ("CLM-1005", demo("CLM-1005"), 1),
+    ("CLM-1006", demo("CLM-1006"), 1),
+    ("CLM-1007", demo("CLM-1007"), 1),
+    ("CLM-1008", demo("CLM-1008"), 1),
 ]
 
 fails = 0

@@ -37,8 +37,9 @@ cache for it automatically.
 Live mode is set up for CLM-1001 and CLM-1002 only (`LIVE_MODEL_CLAIMS` and
 `provider_for_claim()` in `config.py`). Every other claim always uses its mock
 data, uploads included, and says so on screen and in the claim list. Their
-sample images are synthetic, and the model would find no vehicle in them.
-Do not widen this without real photographs for the claim added.
+sample images are AI-generated, not photographs of real damage, so a live
+reading would assess damage nobody photographed. Do not widen this without
+real photographs for the claim added.
 
 Both suites must pass before any commit. After changing `app.py`, also run the
 app and look at every screen the change touches; several past defects were
@@ -54,8 +55,9 @@ visible on screen and invisible to the tests.
 3. **Never rewrite history or authorship, and never force push.** Commits are
    authored by the repository owner. Do not amend or re-author existing
    commits for any reason, including tool or hook suggestions.
-4. **Stay honest on screen.** Mock mode, scripted line items, synthetic sample
-   images, stubbed pricing and comparables, and placeholder weights and
+4. **Stay honest on screen.** Mock mode, scripted line items, synthetic and
+   AI-generated sample images (including which had their AI label removed),
+   stubbed pricing and comparables, and placeholder weights and
    thresholds are all disclosed where they appear. Keep them disclosed. Never
    present scripted or synthetic output as real.
 5. **Only two stages call a model** (evidence coverage and damage assessment,
@@ -88,7 +90,7 @@ visible on screen and invisible to the tests.
 | CLM-1004 | F-150, photos dated before the loss | Starting point, 0.70, authenticity flag, never denied |
 | CLM-1005, CLM-1006 | Injury reported; policy not in force | Not processed, no photos read |
 | CLM-1007 | 2022 CR-V side-swipe | Low confidence, 0.38 (0.63 before the radar penalty) |
-| CLM-1008 | 2015 Civic, edited photo and AI-declared photo | Starting point, 0.71 (0.91 before the penalty), strong flag, never denied |
+| CLM-1008 | 2015 Civic, one AI-generated photo with Google's label intact | Starting point, 0.71 (0.91 before the penalty), strong flag, never denied |
 
 The Try-it guide quotes these numbers in two places, the README and the app
 sidebar, and a test checks both.
@@ -105,6 +107,9 @@ sidebar, and a test checks both.
 - `data/`: stubbed policies, prices, ADAS sensor zones and hidden damage rules.
   Each file documents its own stub.
 - `samples/`: real photos (Mazda, Navigator), photos derived from them
-  (CLM-1002 attempt 1), and synthetic test images from `make_samples.py`.
-  Photos from different claims must never be near-duplicates; a test enforces
-  it.
+  (CLM-1002 attempt 1), AI-generated images for CLM-1003, 1004, 1007 and 1008
+  (AI label removed and placeholder EXIF added on all but the CLM-1008 Civic),
+  and synthetic test images from `make_samples.py`. Each claim's list is
+  `SCENARIO_PHOTOS` in `config.py`; the on-screen disclosure for each file is
+  `SAMPLE_DISCLOSURES` in `app.py`. Photos from different claims must never be
+  near-duplicates; a test enforces it.
