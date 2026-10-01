@@ -1,4 +1,4 @@
-"""End-to-end smoke test across all seven demo claims. Mock provider, no key."""
+"""End-to-end smoke test across all eight demo claims. Mock provider, no key."""
 # Run against a throwaway runtime folder. These tests delete and plant ledger
 # and log entries, and must never touch a presenter's real demo data.
 import os as _os
@@ -23,6 +23,7 @@ CASES = [
     ("CLM-1005", s("good_a.jpg"), 1),
     ("CLM-1006", s("good_a.jpg"), 1),
     ("CLM-1007", s("sideswipe_a.jpg", "sideswipe_b.jpg", "sideswipe_c.jpg"), 1),
+    ("CLM-1008", s("edited_door.jpg", "ai_generated_door.jpg"), 1),
 ]
 
 fails = 0

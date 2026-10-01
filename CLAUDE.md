@@ -20,8 +20,8 @@ say so, because the PRD then needs the same change.
 ```powershell
 pip install -r requirements.txt
 streamlit run app.py        # mock mode by default, no API key needed
-python smoke_test.py        # pipeline across all seven claims
-python ui_test.py           # the Streamlit script itself, about 47 checks
+python smoke_test.py        # pipeline across all eight claims
+python ui_test.py           # the Streamlit script itself, about 52 checks
 ```
 
 Both suites force `VLM_PROVIDER=mock` whatever `.env` says, so they never call the API.
@@ -88,6 +88,7 @@ visible on screen and invisible to the tests.
 | CLM-1004 | F-150, photos dated before the loss | Starting point, 0.70, authenticity flag, never denied |
 | CLM-1005, CLM-1006 | Injury reported; policy not in force | Not processed, no photos read |
 | CLM-1007 | 2022 CR-V side-swipe | Low confidence, 0.38 (0.63 before the radar penalty) |
+| CLM-1008 | 2015 Civic, edited photo and AI-declared photo | Starting point, 0.71 (0.91 before the penalty), strong flag, never denied |
 
 The Try-it guide quotes these numbers in two places, the README and the app
 sidebar, and a test checks both.

@@ -316,6 +316,47 @@ _SCRIPTS: dict[str, dict] = {
                      "visible surface.",
         },
     },
+    # CLM-1008: MANIPULATED PHOTOS.
+    #
+    # The damage is ordinary and the estimate is sound: a door dent on a car
+    # with no sensors in that panel, priced and well covered by comparables.
+    # Everything that moves this claim comes from the authenticity screen
+    # reading the photos' metadata, so the arithmetic shows that one effect:
+    # 0.91 before the penalty, 0.71 after, kept out of verify because the
+    # strongest flag is strong.
+    "CLM-1008": {
+        "coverage": {
+            "panels_visible": ["left_front_door"],
+            "missing": [],
+            "unfixable": "",
+            "coverage_score": 0.88,
+            "notes": "Adequate coverage of the dent and the door around it.",
+        },
+        "damage": {
+            "line_items": [
+                {
+                    "operation": "repair", "part": "left front door",
+                    "panel": "left_front_door", "damage_type": "dent",
+                    "severity": "moderate",
+                    "reasoning": "Round dent below the handle, about the size "
+                                 "of a fist. The metal is stretched but the "
+                                 "body line is intact.",
+                    "confidence": 0.86,
+                },
+                {
+                    "operation": "refinish", "part": "left front door",
+                    "panel": "left_front_door", "damage_type": "paint",
+                    "severity": "moderate",
+                    "reasoning": "Paint is cracked across the dent and needs "
+                                 "refinishing after the repair.",
+                    "confidence": 0.90,
+                },
+            ],
+            "damage_panels": ["left_front_door"],
+            "notes": "The damage judgment does not depend on the authenticity "
+                     "concerns, which are handled separately.",
+        },
+    },
 }
 
 

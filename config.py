@@ -45,6 +45,8 @@ def provider_for_claim(claim_id: str) -> str:
     if VLM_PROVIDER == "anthropic" and claim_id not in LIVE_MODEL_CLAIMS:
         return "mock"
     return VLM_PROVIDER
+
+
 # Sonnet is a sensible default for running the prototype, not a production
 # recommendation.
 #
@@ -144,3 +146,37 @@ if not _writable(RUNTIME_DIR):
     os.makedirs(RUNTIME_DIR, exist_ok=True)
 OVERRIDE_LOG = os.path.join(RUNTIME_DIR, "overrides.jsonl")
 PHASH_LEDGER = os.path.join(RUNTIME_DIR, "phash_ledger.json")
+
+
+# --- Demo photographs -------------------------------------------------------
+# Photographs per claim, and per attempt where a resubmission differs.
+# CLM-1001 uses three real photographs of front corner damage; everything else
+# is synthetic, and deliberately obvious about it.
+#
+# Kept here, not in the app, because the authenticity screen needs them too. A
+# demo photo belongs to its own claim: it is never flagged as reuse there, and
+# any other claim that submits it is the later submission. Without this, after
+# Reset demo data the first visitor to upload a demo photo to another claim
+# became its owner, and the claim it belongs to was flagged for everyone.
+SCENARIO_PHOTOS = {
+    ("CLM-1001", 1): ["mazda6_front.jpg", "mazda6_corner.jpg", "mazda6_damage.jpg"],
+    ("CLM-1002", 1): ["bad_blurry.jpg", "bad_dark.jpg", "bad_lowres.jpg"],
+    # Deliberately empty. The re-request has gone out and nothing has come
+    # back yet, so the claim sits in a waiting state until photos are uploaded.
+    ("CLM-1002", 2): [],
+    ("CLM-1003", 1): ["bumper_a.jpg", "bumper_b.jpg", "bumper_c.jpg"],
+    ("CLM-1004", 1): ["stale_timestamp.jpg", "stale_timestamp_2.jpg"],
+    ("CLM-1005", 1): ["good_a.jpg"],
+    ("CLM-1006", 1): ["good_a.jpg"],
+    ("CLM-1007", 1): ["sideswipe_a.jpg", "sideswipe_b.jpg", "sideswipe_c.jpg"],
+    ("CLM-1008", 1): ["edited_door.jpg", "ai_generated_door.jpg"],
+}
+
+# The photographs a policyholder sends back in answer to a re-request. A
+# visitor to a hosted copy of this app does not have these files, so the
+# waiting screen can load them in one click. They then run exactly as an
+# upload would: counted against the views requested, screened, recorded.
+SAMPLE_RESUBMISSIONS = {
+    ("CLM-1002", 2): ["navigator_wheel_closeup.jpg", "navigator_wheel_angle.jpg",
+                      "navigator_wheel_context.jpg"],
+}

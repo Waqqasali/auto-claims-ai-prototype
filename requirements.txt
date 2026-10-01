@@ -5,7 +5,8 @@
 
 streamlit>=1.64,<2.0        # tested against 1.64. Earlier releases lack
                             # theme keys and widget parameters this app uses
-pillow>=10.0,<13.0          # tested against 12.2
+pillow>=11.0,<13.0          # tested against 12.2. 10.x drops XMP when saving
+                            # a JPEG, which strips the AI label from samples
 imagehash>=4.3,<5.0         # tested against 4.3.2
 pandas>=2.0,<4.0            # tested against 3.0.2
 

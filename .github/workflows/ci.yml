@@ -35,7 +35,7 @@ jobs:
       # No ANTHROPIC_API_KEY is set anywhere in this workflow. That is
       # deliberate: it proves the default mock provider runs with no
       # credentials and no network access to a model endpoint.
-      - name: Pipeline smoke test (all seven claims, no UI)
+      - name: Pipeline smoke test (all eight claims, no UI)
         run: python smoke_test.py
 
       - name: Streamlit UI test (every scenario, headless)
