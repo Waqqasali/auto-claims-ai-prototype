@@ -145,6 +145,12 @@ class Decision:
     tier: str                 # not_processed | verify | starting_point | low_confidence
     headline: str
     reasons: list[str] = field(default_factory=list)
+    # Wording overrides for the banner, when a tier's standard words would be
+    # untrue. A video-only claim is re_request, for routing and metrics, but
+    # "MORE PHOTOS NEEDED" would imply photos already arrived. Empty means the
+    # tier's own label and guidance (routing.label and routing.guidance).
+    label: str = ""
+    guidance: str = ""
 
 
 @dataclass
@@ -155,6 +161,9 @@ class EvidenceVerdict:
     instruction: str = ""     # customer-facing text when status == re_request
     escalation_reason: str = ""
     coverage_score: float = 0.0
+    # True when only video arrived: the screen then says no photos were
+    # received, rather than that the photos sent were inadequate.
+    video_only: bool = False
 
 
 @dataclass
@@ -171,3 +180,6 @@ class ClaimResult:
     confidence: Optional[ConfidenceBreakdown] = None
     decision: Optional[Decision] = None
     attempt: int = 1
+    # File names of videos received with the claim. Names only: a video is
+    # never opened, stored, hashed or sent to the model (see imaging.py).
+    videos: list[str] = field(default_factory=list)

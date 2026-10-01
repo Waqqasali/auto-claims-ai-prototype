@@ -113,6 +113,9 @@ AUTHENTICITY_FLAG_PENALTY = AUTHENTICITY_PENALTY["strong"]   # the maximum
 
 # --- Stage 5: routing tiers -------------------------------------------------
 TIER_VERIFY_MIN = 0.80              # >= this: present as a draft to verify
+# Verify also requires the weakest line item to clear this, so strong photos
+# cannot outvote one shaky line. A placeholder, like every threshold here.
+VERIFY_MIN_LINE_FLOOR = 0.70
 TIER_STARTING_POINT_MIN = 0.55      # >= this: present as a starting point
 # below TIER_STARTING_POINT_MIN: present as low confidence, do not anchor
 

@@ -163,6 +163,8 @@ says so.
 
 A file that is not a readable image (a renamed document, an empty or half-transferred file) is refused with a one-line reason and the rest of the upload runs as normal.
 
+**No video.** The MVP assesses still photos. The uploader accepts a video but never assesses it or sends it to the model: a video on its own gets a request for three photos, and a video sent with photos is set aside. Whether and how video is supported later is decided by Phase 1 data on how often it arrives.
+
 WEBP and HEIC usually arrive with EXIF stripped by the re-encode. That is not
 silently ignored: it raises an authenticity flag and lowers confidence, which is
 the intended behavior and easy to demonstrate by uploading the same photo as a
@@ -270,7 +272,7 @@ components** in the sidebar.
 | Evidence sufficiency logic | **Real** | Attempt cap, bail-out conditions, instruction generation, and at most three photos per request in plain words, whatever the model returns. |
 | ADAS zone intersection | **Real** | Deterministic: the damaged panels against the vehicle's sensor map. The map itself is stubbed, below. |
 | Confidence arithmetic | **Real** | Deterministic, auditable, in `pipeline/confidence.py`. |
-| Routing and tiering | **Real** | Deterministic. |
+| Routing and tiering | **Real** | Deterministic. Verify needs a score of at least 0.80, a weakest line item of at least 0.70 and no strong authenticity flag, so strong photos cannot outvote one shaky line. Starting point needs at least 0.55. All three values are placeholders. |
 | Override capture | **Real** | Writes to `runtime/overrides.jsonl` with mandatory reason codes. |
 | Damage line items | **Model for CLM-1001 and CLM-1002 in live mode, scripted everywhere else** | In live mode the model reads the photographs on CLM-1001 and CLM-1002. Every other claim, and every claim in mock mode, returns its scripted assessment, so the decision architecture is observable without an API key. |
 | Pricing | **Stubbed** | Flat rates from a local table. No regional variation, no vehicle-specific parts, no DRP-negotiated rates. Isolated behind `pricing.price_line()`. |

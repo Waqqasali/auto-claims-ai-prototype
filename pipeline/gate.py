@@ -93,11 +93,13 @@ def evaluate(ctx: ClaimContext) -> tuple[bool, list[str]]:
         )
 
     if ctx.obvious_total_loss:
+        # The gate consumes the carrier's flag; it does not decide total loss.
         reasons.append(
-            "Vehicle is an evident total loss. Repair line items serve no "
-            "purpose. Note this is deliberately narrow: many carriers determine "
-            "total loss BY comparing a repair estimate against actual cash "
-            "value, so only already-evident total losses are excluded here."
+            "The carrier's existing process has flagged this vehicle as a total "
+            "loss, so repair line items serve no purpose. PACT does not "
+            "determine total loss: many carriers decide it by comparing a repair "
+            "estimate against actual cash value, so only claims already flagged "
+            "are excluded here."
         )
 
     return (len(reasons) == 0), reasons

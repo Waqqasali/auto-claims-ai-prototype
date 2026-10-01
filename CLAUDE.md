@@ -21,7 +21,7 @@ say so, because the PRD then needs the same change.
 pip install -r requirements.txt
 streamlit run app.py        # mock mode by default, no API key needed
 python smoke_test.py        # pipeline across all eight claims
-python ui_test.py           # the Streamlit script itself, about 52 checks
+python ui_test.py           # the Streamlit script itself, about 56 checks
 ```
 
 Both suites force `VLM_PROVIDER=mock` whatever `.env` says, so they never call the API.
@@ -96,6 +96,14 @@ visible on screen and invisible to the tests.
 
 The Try-it guide quotes these numbers in two places, the README and the app
 sidebar, and a test checks both.
+
+Tiers (placeholders, in `config.py`): verify needs a score of at least
+`TIER_VERIFY_MIN` (0.80), a weakest line item of at least
+`VERIFY_MIN_LINE_FLOOR` (0.70) and no strong authenticity flag; starting point
+needs at least `TIER_STARTING_POINT_MIN` (0.55); below that is low confidence.
+The gate consumes the carrier's existing total loss flag; PACT never decides
+total loss. Video is accepted but never assessed: video alone gets a request
+for photos (escalated on the last attempt), and video with photos is set aside.
 
 ## Where things are
 

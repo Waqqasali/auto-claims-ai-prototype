@@ -1320,5 +1320,178 @@ else:
     print("[ OK ] navigator  blurry upload still clamped to 0.40")
 
 
+# --------------------------------------------------------------------------
+# Verify needs a minimum weakest line. The score is a weighted sum, so good
+# photos and dense comparables can carry a claim past 0.80 with one shaky line
+# in it. 0.82 is reachable that way: a 0.60 floor with every other signal at
+# 1.00. When verify is blocked, the first reason must not say the score "sits
+# between" the thresholds, because it does not.
+# --------------------------------------------------------------------------
+
+from pipeline import routing as _routing  # noqa: E402
+from pipeline.models import ConfidenceBreakdown as _CB  # noqa: E402
+
+
+def _route(score, floor, flags=()):
+    return _routing.decide(_CB(claim_confidence=score, line_item_floor=floor),
+                           Assessment(), [], list(flags))
+
+
+_shaky = _route(0.82, 0.60)
+_solid = _route(0.82, 0.75)
+_flagged = _route(0.82, 0.75, ["Capture time predates the reported loss by 3 days."])
+_floor_reason = ("Weakest line item 0.60 is below the verify minimum (0.70), so "
+                 "the claim cannot be marked verify.")
+_problems = []
+if _shaky.tier != "starting_point" or _floor_reason not in _shaky.reasons:
+    _problems.append(f"0.82 with floor 0.60: {_shaky.tier}, {_shaky.reasons}")
+if any("sits between" in r for r in _shaky.reasons + _flagged.reasons):
+    _problems.append("a blocked claim above 0.80 is described as between the "
+                     "thresholds")
+if _solid.tier != "verify":
+    _problems.append(f"0.82 with floor 0.75: {_solid.tier}, expected verify")
+if _flagged.tier != "starting_point" or not any(
+        "strong media authenticity" in r for r in _flagged.reasons):
+    _problems.append(f"strong flag at 0.82: {_flagged.tier}, {_flagged.reasons}")
+if _problems:
+    print("[FAIL] floor: " + "; ".join(_problems))
+    fails += 1
+else:
+    print("[ OK ] floor    0.82 with a 0.60 weakest line is a starting point and "
+          "says why; with 0.75 it verifies; a strong flag still blocks verify")
+
+# --------------------------------------------------------------------------
+# Video is accepted, never assessed. On its own it gets a request for three
+# photos, made without the model, under the same attempt rule as photographs.
+# No photo has arrived yet, so nothing on that path may say "more" or
+# "additional". The gate still runs first. The file names below do not exist
+# on disk: a pipeline that tried to open a video would fail here, which is
+# the point.
+# --------------------------------------------------------------------------
+
+import providers.vlm_mock as _vm  # noqa: E402
+
+_vcalls = []
+_orig_cov, _orig_dmg = _vm.MockVLM.assess_coverage, _vm.MockVLM.assess_damage
+
+
+def _count_cov(self, *a, **k):
+    _vcalls.append("coverage")
+    return _orig_cov(self, *a, **k)
+
+
+def _count_dmg(self, *a, **k):
+    _vcalls.append("damage")
+    return _orig_dmg(self, *a, **k)
+
+
+if os.path.exists(_cfg.PHASH_LEDGER):
+    os.remove(_cfg.PHASH_LEDGER)
+_vm.MockVLM.assess_coverage, _vm.MockVLM.assess_damage = _count_cov, _count_dmg
+try:
+    _first = _run.run("CLM-1001", [], attempt=1, user_photos=True,
+                      videos=["walkaround.mp4"])
+    _last = _run.run("CLM-1002", [], attempt=2, user_photos=True,
+                     videos=["wheel.mov"])
+    _gated = _run.run("CLM-1005", [], attempt=1, user_photos=True,
+                      videos=["crash.mp4"])
+finally:
+    _vm.MockVLM.assess_coverage, _vm.MockVLM.assess_damage = _orig_cov, _orig_dmg
+
+_ins = _first.evidence.instruction if _first.evidence else ""
+# Everything a reviewer or policyholder reads on the attempt 1 path.
+_path_text = " ".join([_ins, _first.decision.headline, _routing.label(_first.decision),
+                       _routing.guidance(_first.decision)] + _first.decision.reasons)
+_problems = []
+if _first.decision.tier != "re_request":
+    _problems.append(f"video only on attempt 1 is {_first.decision.tier}")
+if _routing.label(_first.decision) != "PHOTOS NEEDED":
+    _problems.append(f"banner label is {_routing.label(_first.decision)!r}")
+if not _ins.startswith("We received your video"):
+    _problems.append(f"message starts {_ins[:40]!r}")
+for _want in _evidence.VIDEO_ONLY_REQUESTS:
+    if f"  - {_want}" not in _ins:
+        _problems.append(f"message lacks {_want!r}")
+for _never in ("a little more", "more photos", "additional", "could not be used"):
+    if _never.lower() in _path_text.lower():
+        _problems.append(f"the video-only path says {_never!r}")
+if _vcalls:
+    _problems.append(f"the provider was called: {_vcalls}")
+if _last.decision.tier != "escalated" or _last.decision.reasons != [
+        "Only a video was received after a request for photos. Routed to a "
+        "claims agent rather than asking again."]:
+    _problems.append(f"video only on attempt 2: {_last.decision.tier}, "
+                     f"{_last.decision.reasons}")
+if _gated.decision.tier != "not_processed":
+    _problems.append(f"video only on CLM-1005 is {_gated.decision.tier}")
+if os.path.exists(_cfg.PHASH_LEDGER):
+    _problems.append("a video reached the reuse ledger")
+
+# A photo-based request keeps its wording exactly.
+_photo_req = _run.run("CLM-1002", _demo("CLM-1002"), attempt=1, record_hashes=False)
+_pins_text = _photo_req.evidence.instruction if _photo_req.evidence else ""
+if (_routing.label(_photo_req.decision) != "MORE PHOTOS NEEDED"
+        or not _pins_text.startswith("To finish assessing your claim we need a "
+                                     "little more from you.\n\nPlease take these "
+                                     "photos:\n")
+        or "\nThese photos could not be used:\n" not in _pins_text
+        or not _pins_text.endswith("a claims specialist will call you.")):
+    _problems.append(f"the photo request changed: "
+                     f"{_routing.label(_photo_req.decision)}, {_pins_text[:80]!r}")
+if _problems:
+    print("[FAIL] video: " + "; ".join(_problems))
+    fails += 1
+else:
+    print("[ OK ] video    video only gets PHOTOS NEEDED and a request for three "
+          "photos without the model, never 'more'; escalates on the last "
+          "attempt; the gate runs first; photo requests are unchanged")
+
+# Photos with a video are assessed exactly as the photos alone, with a note.
+_alone = _run.run("CLM-1001", _demo("CLM-1001"), attempt=1, record_hashes=False)
+_both = _run.run("CLM-1001", _demo("CLM-1001"), attempt=1, record_hashes=False,
+                 videos=["walkaround.mp4"])
+_same = ((_alone.confidence.claim_confidence, _alone.decision.tier,
+          _alone.evidence.coverage_score, _alone.decision.reasons)
+         == (_both.confidence.claim_confidence, _both.decision.tier,
+             _both.evidence.coverage_score, _both.decision.reasons))
+_note = _evidence.video_note(_both.videos)
+if not _same or (_both.confidence.claim_confidence, _both.decision.tier) != (0.94, "verify"):
+    print(f"[FAIL] video+photos: {_both.decision.tier} "
+          f"{_both.confidence.claim_confidence:.2f}, photos alone "
+          f"{_alone.decision.tier} {_alone.confidence.claim_confidence:.2f}")
+    fails += 1
+elif _note != "1 video(s) set aside: the MVP assesses still photos.":
+    print(f"[FAIL] video+photos: set-aside note reads {_note!r}")
+    fails += 1
+else:
+    print("[ OK ] video+photos CLM-1001 with a video scores 0.94 verify, the same "
+          "as its photos alone, with the set-aside note")
+
+# --------------------------------------------------------------------------
+# Pinned numbers, all in one place, from a clean ledger. Every change above
+# must leave them where the PRD and the guide quote them.
+# --------------------------------------------------------------------------
+
+if os.path.exists(_cfg.PHASH_LEDGER):
+    os.remove(_cfg.PHASH_LEDGER)
+_pins = {
+    "CLM-1001": (_run.run("CLM-1001", _demo("CLM-1001"), record_hashes=False), 0.94, "verify"),
+    "CLM-1002 attempt 2": (_run.run("CLM-1002", _nav_paths, attempt=2, user_photos=True,
+                                    record_hashes=False), 0.92, "verify"),
+    "CLM-1003": (_run.run("CLM-1003", _demo("CLM-1003"), record_hashes=False), 0.60, "starting_point"),
+    "CLM-1004": (_run.run("CLM-1004", _demo("CLM-1004"), record_hashes=False), 0.70, "starting_point"),
+    "CLM-1007": (_run.run("CLM-1007", _demo("CLM-1007"), record_hashes=False), 0.38, "low_confidence"),
+    "CLM-1008": (_run.run("CLM-1008", _demo("CLM-1008"), record_hashes=False), 0.71, "starting_point"),
+}
+_moved = [f"{k} {r.decision.tier} {r.confidence.claim_confidence:.2f}"
+          for k, (r, score, tier) in _pins.items()
+          if (round(r.confidence.claim_confidence, 2), r.decision.tier) != (score, tier)]
+if _moved:
+    print(f"[FAIL] pinned: moved {_moved}")
+    fails += 1
+else:
+    print("[ OK ] pinned   " + ", ".join(f"{k} {s:.2f}" for k, (_, s, _) in _pins.items()))
+
+
 print("FAILURES:", fails)
 sys.exit(1 if fails else 0)

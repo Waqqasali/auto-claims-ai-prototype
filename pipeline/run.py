@@ -48,11 +48,15 @@ def run(
     provider_name: str | None = None,
     record_hashes: bool = True,
     user_photos: bool = False,
+    videos: list[str] | None = None,
 ) -> ClaimResult:
+    """`videos` are the file names of any videos received. They are never
+    assessed: with photos they are set aside, and on their own they produce a
+    request for photos without calling the model."""
     ctx = gate.load_claim_context(claim_id)
     ctx.user_supplied_photos = user_photos
     ctx.attempt = attempt
-    result = ClaimResult(context=ctx, attempt=attempt)
+    result = ClaimResult(context=ctx, attempt=attempt, videos=list(videos or []))
 
     # --- Stage 0: processing gate ----------------------------------------
     may_process, reasons = gate.evaluate(ctx)
@@ -64,6 +68,36 @@ def run(
             headline="Claim excluded from automated assessment",
             reasons=reasons,
         )
+        return result
+
+    # --- Video only: ask for photos, without the model ---------------------
+    # After the gate, so an excluded claim stays excluded whatever was sent.
+    # Before the provider is even built: there is nothing for it to read.
+    if result.videos and not photo_paths:
+        verdict = evidence.video_only(result.videos, attempt)
+        result.evidence = verdict
+        if verdict.status == "escalate":
+            result.decision = routing.Decision(
+                tier="escalated",
+                headline="Escalated to a claims agent",
+                reasons=[verdict.escalation_reason],
+            )
+        else:
+            # The tier key stays re_request, so routing and metrics count it
+            # with every other request. The words change: no photos have been
+            # sent yet, so nothing may say "more" or "additional".
+            result.decision = routing.Decision(
+                tier="re_request",
+                headline=(f"Photos requested: only a video was received "
+                          f"(attempt {attempt} of "
+                          f"{evidence.MAX_REQUEST_ATTEMPTS})"),
+                reasons=["Only a video was received. Damage is assessed from "
+                         "still photos, so photos were requested."],
+                label="PHOTOS NEEDED",
+                guidance=("A request for specific photos has been sent to the "
+                          "policyholder. No assessment was run, because no "
+                          "photos were received."),
+            )
         return result
 
     provider = get_provider(provider_name or VLM_PROVIDER)

@@ -162,6 +162,66 @@ def evaluate(
     )
 
 
+# What a video-only submission is asked for instead. Damage is assessed from
+# still photographs, so these are the photographs any reported damage needs:
+# where it is, what it looks like close up, and its depth from a second angle.
+VIDEO_ONLY_REQUESTS = [
+    "A photo of the whole damaged side of the vehicle",
+    "A close-up of each damaged area",
+    "A photo of the damage from a second angle",
+]
+
+
+def video_only(video_names: list[str], attempt: int) -> EvidenceVerdict:
+    """A submission with video and no usable photograph.
+
+    Decided without the model: there is nothing for it to read, and a video
+    is never sent to it. The attempt rule is the same as for photographs, so
+    the last attempt hands the claim to a claims agent instead of asking again.
+    """
+    missing = VIDEO_ONLY_REQUESTS[:MAX_PHOTOS_PER_REQUEST]
+    if attempt >= MAX_REQUEST_ATTEMPTS:
+        return EvidenceVerdict(
+            status="escalate",
+            missing=missing,
+            escalation_reason=(
+                "Only a video was received after a request for photos. Routed "
+                "to a claims agent rather than asking again."
+            ),
+            coverage_score=0.0,
+            video_only=True,
+        )
+    return EvidenceVerdict(
+        status="re_request",
+        missing=missing,
+        instruction=video_instruction(missing),
+        coverage_score=0.0,
+        video_only=True,
+    )
+
+
+def video_instruction(missing: list[str]) -> str:
+    """The request sent when only a video arrived. Its own opening, because
+    the photo request's "we need a little more from you" assumes photos were
+    already sent, and none were. The list and the tips match build_instruction.
+    """
+    lines = ["We received your video. We assess damage from still photos, so "
+             "to continue with your claim, please take these photos:"]
+    for m in missing:
+        lines.append(f"  - {m}")
+    lines.append(_TIPS)
+    return "\n".join(lines)
+
+
+def video_note(video_names: list[str]) -> str:
+    """Shown under Evidence when photos arrived with video. No flag, no
+    penalty: sending a video is not suspicious, only unassessed."""
+    if not video_names:
+        return ""
+    return (f"{len(video_names)} video(s) set aside: the MVP assesses still "
+            f"photos.")
+
+
 def build_instruction(problems: list[str], missing: list[str]) -> str:
     """Customer-facing text. Specific and actionable, never 'send better photos'."""
     lines = ["To finish assessing your claim we need a little more from you."]
@@ -176,10 +236,15 @@ def build_instruction(problems: list[str], missing: list[str]) -> str:
         for p in problems:
             lines.append(f"  - {p}")
 
-    lines.append(
-        "\nTips: stand about 6 feet back so the whole damaged panel is in frame, "
-        "shoot in daylight or a well-lit area, and hold still until the camera "
-        "focuses. If you are unable to take these, reply and a claims specialist "
-        "will call you."
-    )
+    lines.append(_TIPS)
     return "\n".join(lines)
+
+
+# Shared by both requests, so a photo request and a video-only request give the
+# policyholder the same advice.
+_TIPS = (
+    "\nTips: stand about 6 feet back so the whole damaged panel is in frame, "
+    "shoot in daylight or a well-lit area, and hold still until the camera "
+    "focuses. If you are unable to take these, reply and a claims specialist "
+    "will call you."
+)

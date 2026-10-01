@@ -37,6 +37,19 @@ def supported_upload_types() -> list[str]:
     return _BASE_UPLOAD_TYPES + (["heic", "heif"] if HEIF_AVAILABLE else [])
 
 
+# Video is accepted and never assessed: the MVP works from still photographs.
+# Without these in the uploader, Streamlit refused a video inside the widget
+# ("video/mp4 files are not allowed.") and the pipeline never saw it, so a
+# video-only claim got no request for the photos it needs. A video is kept by
+# name only: never written to disk, opened, hashed or sent to the model.
+VIDEO_UPLOAD_TYPES = ["mp4", "mov", "m4v", "avi", "webm", "3gp"]
+
+
+def is_video(filename: str) -> bool:
+    """Decided by extension, the only thing the pipeline ever reads of a video."""
+    return os.path.splitext(filename)[1].lower().lstrip(".") in VIDEO_UPLOAD_TYPES
+
+
 def _laplacian_variance(img: Image.Image) -> float:
     """Variance of the Laplacian: the standard cheap sharpness measure.
 

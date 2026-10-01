@@ -37,10 +37,12 @@ from config import (
     LIVE_MODEL_CLAIMS,
     SAMPLE_RESUBMISSIONS,
     SCENARIO_PHOTOS,
+    VERIFY_MIN_LINE_FLOOR,
     VLM_PROVIDER,
     provider_for_claim,
 )
-from pipeline import adas, comparables, gate, imaging, pricing, routing, run
+from pipeline import (adas, authenticity, comparables, evidence, gate, imaging,
+                      pricing, routing, run)
 
 st.set_page_config(
     page_title="PACT AI",
@@ -289,13 +291,17 @@ with st.sidebar:
         # Whatever Pillow can read in this install, including HEIC when
         # pillow-heif is present. WEBP and HEIC usually arrive with EXIF
         # stripped, which the authenticity stage flags rather than ignores.
-        type=imaging.supported_upload_types(),
+        # Video is accepted so it reaches the pipeline, which asks for photos
+        # instead of assessing it; see imaging.VIDEO_UPLOAD_TYPES.
+        type=imaging.supported_upload_types() + imaging.VIDEO_UPLOAD_TYPES,
         accept_multiple_files=True,
         help="Your photos replace the demo set and run against this claim's "
              "policy and vehicle. Quality, authenticity and confidence all "
              "measure your actual file. A photo that reached you through a "
              "messaging app or browser may have lost its EXIF, which "
-             "raises an authenticity flag.",
+             "raises an authenticity flag. A video is accepted but not "
+             "assessed: the MVP works from still photos, so a video on its "
+             "own gets a request for photos.",
     )
 
     st.divider()
@@ -378,9 +384,16 @@ def rationale(text):
 # --------------------------------------------------------------------------
 
 rejected_uploads = []
+videos: list[str] = []
 if uploaded:
     paths = []
     for i, f in enumerate(uploaded):
+        if imaging.is_video(f.name):
+            # Kept by name only. Never written to runtime/, opened, hashed,
+            # recorded in the reuse ledger or sent to the model: the MVP does
+            # not assess video, so there is no reason to hold its bytes.
+            videos.append(os.path.basename(f.name) or "video")
+            continue
         # One folder per file, so two phones' IMG_0001.jpg cannot overwrite
         # each other and the displayed filename stays the one the user chose.
         folder = os.path.join(RUNTIME_DIR, "uploads", claim_id, f"{i:02d}")
@@ -419,13 +432,15 @@ if rejected_uploads:
         icon="🚫",
     )
 
-if uploaded and not paths:
+# A video on its own is not this case: it goes to the pipeline, which asks for
+# photos. This stop is for files that are neither readable images nor videos.
+if uploaded and not paths and not videos:
     st.markdown(f"### {claim_id} · {gate.load_claim_context(claim_id).vehicle_label}")
     st.info("None of the uploaded files could be read as an image, so nothing "
             "was assessed. Upload photographs in one of the formats the uploader lists.", icon="📎")
     st.stop()
 
-if not paths:
+if not paths and not videos:
     ctx_waiting = gate.load_claim_context(claim_id)
     st.markdown(f"### {claim_id} · {ctx_waiting.vehicle_label}")
     if ctx_waiting.loss_description:
@@ -495,13 +510,13 @@ try:
             result = run.run(
                 claim_id, paths, attempt=attempt, record_hashes=True,
                 user_photos=bool(uploaded) or using_sample,
-                provider_name=claim_provider,
+                provider_name=claim_provider, videos=videos,
             )
     else:
         result = run.run(
             claim_id, paths, attempt=attempt, record_hashes=True,
             user_photos=bool(uploaded) or using_sample,
-            provider_name=claim_provider,
+            provider_name=claim_provider, videos=videos,
         )
 except Exception as exc:
     # In live mode this is usually the vision API: a timeout, a rate limit, a
@@ -543,7 +558,7 @@ if mock_in_live and result.gate_passed:
         f"and routing steps still run for real."
         + (f" Your {len(paths)} photo(s) go through those checks, but **the "
            f"damage line items are this claim's scripted assessment, not a "
-           f"reading of your photographs.**" if uploaded else ""),
+           f"reading of your photographs.**" if uploaded and paths else ""),
         icon="🧪",
     )
 elif uploaded and not result.gate_passed:
@@ -552,7 +567,7 @@ elif uploaded and not result.gate_passed:
     # Photos: 0 metric directly beneath it.
     st.info(
         f"**{claim_id}** is excluded at the gate, before any photograph is "
-        f"read, so your {len(paths)} upload(s) were not processed. That is "
+        f"read, so your {len(uploaded)} upload(s) were not processed. That is "
         f"the intended behavior: no compute is spent on a claim that leaves "
         f"the automated path.",
         icon="📎",
@@ -574,6 +589,13 @@ elif using_sample:
                      help="Return to the waiting state."):
             del st.session_state[f"sample_resub::{claim_id}::{attempt}"]
             st.rerun()
+elif uploaded and not paths:
+    st.info(
+        f"Your upload is video only ({len(videos)} file(s)). The MVP assesses "
+        f"still photos, so the video is not assessed or sent to the model. "
+        f"What happens instead is below.",
+        icon="📎",
+    )
 elif uploaded:
     if VLM_PROVIDER == "anthropic":
         st.info(
@@ -618,13 +640,13 @@ st.html(
         <span style="width:8px;height:8px;border-radius:50%;
         background:{accent};display:inline-block;"></span>
         <span style="font-size:11px;font-weight:600;letter-spacing:0.12em;
-        color:{INK};">{routing.TIER_LABELS.get(tier, tier.upper())}</span>
+        color:{INK};">{routing.label(decision)}</span>
       </span>
       <div style="font-family:'Saira',system-ui,sans-serif;font-size:24px;
       font-weight:600;line-height:1.2;color:{INK};margin-top:12px;">
       {decision.headline}</div>
       <div style="font-size:13.5px;color:{MUTED};margin-top:6px;">
-      {routing.TIER_GUIDANCE.get(tier, "")}</div>
+      {routing.guidance(decision)}</div>
     </div>"""
 )
 
@@ -646,7 +668,13 @@ NEXT_STEP = {
     "not_processed": "**Next:** this claim leaves the automated path entirely "
                      "and is handled in the normal workflow.",
 }
-if tier in NEXT_STEP:
+# With no photos there is nothing "each one could not be used" can refer to.
+_video_only = bool(result.evidence and result.evidence.video_only)
+if tier == "escalated" and _video_only:
+    st.caption("**Next:** a claims agent picks this up and contacts the "
+               "policyholder. Only a video was received, and it was not "
+               "assessed.")
+elif tier in NEXT_STEP:
     st.caption(NEXT_STEP[tier])
 
 
@@ -676,7 +704,16 @@ if not result.gate_passed:
 st.divider()
 st.subheader("Evidence")
 
-cols = st.columns(min(len(result.photos), 4))
+# Videos are named, never assessed. No flag and no penalty: sending a video is
+# not suspicious, only out of scope for the MVP.
+if result.videos and result.photos:
+    st.caption(evidence.video_note(result.videos))
+elif result.videos:
+    st.caption(f"No still photos received. {len(result.videos)} video(s) "
+               f"received and not assessed: the MVP assesses still photos.")
+
+# A video-only claim has no photograph to lay out, and st.columns(0) raises.
+cols = st.columns(min(len(result.photos), 4)) if result.photos else []
 for i, photo in enumerate(result.photos):
     with cols[i % len(cols)]:
         st.image(photo.path, width='stretch')
@@ -749,6 +786,9 @@ if result.evidence and result.evidence.status == "re_request":
     )
     st.code(result.evidence.instruction, language=None, wrap_lines=True)
     st.info(
+        "Damage assessment was NOT run. No still photos were received, and "
+        "video is not assessed in this version."
+        if _video_only else
         "Damage assessment was NOT run. Assessing from photos already judged "
         "inadequate would produce a confident answer built on bad evidence, "
         "which is the exact failure this product exists to prevent.",
@@ -761,11 +801,17 @@ if result.evidence and result.evidence.status == "escalate":
     st.subheader("Handed to a claims agent")
     st.caption(
         f"The re-request cap of {MAX_REQUEST_ATTEMPTS} was reached. A person "
+        "takes over from here."
+        if _video_only else
+        f"The re-request cap of {MAX_REQUEST_ATTEMPTS} was reached. A person "
         "takes over from here, with the photographs and the reason each one "
         "could not be used."
     )
     st.error(result.evidence.escalation_reason, icon="👤")
     st.info(
+        "No damage assessment was produced. No still photos were received, "
+        "and video is not assessed in this version."
+        if _video_only else
         "No damage assessment was produced. The system stops rather than "
         "guessing from evidence it has already judged inadequate.",
         icon="🛑",
@@ -944,7 +990,8 @@ with cc1:
         help=HELP_CLAIM_CONFIDENCE,
     )
     st.caption(
-        f"verify ≥ {TIER_VERIFY_MIN:.2f} · starting point ≥ "
+        f"verify ≥ {TIER_VERIFY_MIN:.2f} and weakest line ≥ "
+        f"{VERIFY_MIN_LINE_FLOOR:.2f} · starting point ≥ "
         f"{TIER_STARTING_POINT_MIN:.2f}"
     )
     st.caption("⚠️ Thresholds are placeholders, not calibrated.")
@@ -990,6 +1037,25 @@ with cc2:
 with st.expander("Show the arithmetic"):
     for line in conf.explanation:
         st.markdown(f"- {line}")
+    # The tier step. Routing decides the tier, not the confidence stage, so it
+    # is stated from the same three things routing checks: the score, the
+    # weakest line and whether any strong authenticity flag was raised.
+    _strong = any(authenticity.flag_strength(f) == authenticity.STRONG
+                  for p in result.photos for f in p.authenticity_flags)
+    _score_ok = conf.claim_confidence >= TIER_VERIFY_MIN
+    _floor_ok = conf.line_item_floor >= VERIFY_MIN_LINE_FLOOR
+    st.markdown(
+        f"- Tier: verify needs a score of at least {TIER_VERIFY_MIN:.2f}, a "
+        f"weakest line of at least {VERIFY_MIN_LINE_FLOOR:.2f} and no strong "
+        f"authenticity flag; starting point needs at least "
+        f"{TIER_STARTING_POINT_MIN:.2f}. Here the score is "
+        f"{conf.claim_confidence:.2f} ({'clears' if _score_ok else 'below'} "
+        f"{TIER_VERIFY_MIN:.2f}), the weakest line is "
+        f"{conf.line_item_floor:.2f} ({'clears' if _floor_ok else 'below'} "
+        f"{VERIFY_MIN_LINE_FLOOR:.2f}), and "
+        f"{'a strong flag was raised' if _strong else 'no strong flag was raised'}, "
+        f"so the claim routes to **{routing.label(decision).lower()}**."
+    )
     st.caption(
         "Anchored on the weakest line item rather than the mean. Ten items at "
         "0.90 and one at 0.60 average 0.87; the floor reads 0.60, because one "

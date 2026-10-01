@@ -18,7 +18,7 @@ until the thresholds are calibrated against real override and supplement
 outcomes.
 """
 
-from config import TIER_STARTING_POINT_MIN, TIER_VERIFY_MIN
+from config import TIER_STARTING_POINT_MIN, TIER_VERIFY_MIN, VERIFY_MIN_LINE_FLOOR
 from pipeline.models import Assessment, ConfidenceBreakdown, Decision
 
 # Stands for the Phase 2 route: inside the proven band, the draft skips the
@@ -75,8 +75,14 @@ def decide(
             f"stage does not recognize, or the price catalog has a gap."
         )
 
-    # Only a strong authenticity signal bars verify. See authenticity.py.
-    if score >= TIER_VERIFY_MIN and not strong_flags:
+    # Verify needs three things: the score, no strong authenticity signal (see
+    # authenticity.py), and a weakest line that clears its own minimum. The
+    # score is a weighted sum, so good photos and dense comparables could carry
+    # a claim past the threshold with one shaky line in it; the floor stops
+    # that line being outvoted.
+    floor = confidence.line_item_floor
+    floor_ok = floor >= VERIFY_MIN_LINE_FLOOR
+    if score >= TIER_VERIFY_MIN and not strong_flags and floor_ok:
         tier = "verify"
         headline = "Draft estimate ready for verification"
         reasons.insert(
@@ -87,12 +93,32 @@ def decide(
     elif score >= TIER_STARTING_POINT_MIN:
         tier = "starting_point"
         headline = "Use as a starting point: specific risks identified"
-        reasons.insert(
-            0,
-            f"Confidence {score:.2f} sits between the starting-point threshold "
-            f"({TIER_STARTING_POINT_MIN:.2f}) and the verify threshold "
-            f"({TIER_VERIFY_MIN:.2f}).",
-        )
+        if score >= TIER_VERIFY_MIN:
+            # The score cleared verify, so "sits between the thresholds" would
+            # be untrue. Say what held it back instead.
+            blockers = (["a strong media authenticity flag"] if strong_flags
+                        else []) + ([] if floor_ok else ["the weakest line item"])
+            reasons.insert(
+                0,
+                f"Confidence {score:.2f} is at or above the verify threshold "
+                f"({TIER_VERIFY_MIN:.2f}), but {' and '.join(blockers)} "
+                f"{'keeps' if len(blockers) == 1 else 'keep'} the claim out of "
+                f"verify.",
+            )
+            if not floor_ok:
+                reasons.insert(
+                    1,
+                    f"Weakest line item {floor:.2f} is below the verify minimum "
+                    f"({VERIFY_MIN_LINE_FLOOR:.2f}), so the claim cannot be "
+                    f"marked verify.",
+                )
+        else:
+            reasons.insert(
+                0,
+                f"Confidence {score:.2f} sits between the starting-point "
+                f"threshold ({TIER_STARTING_POINT_MIN:.2f}) and the verify "
+                f"threshold ({TIER_VERIFY_MIN:.2f}).",
+            )
     else:
         tier = "low_confidence"
         headline = "Low confidence: do not anchor on these figures"
@@ -131,3 +157,13 @@ TIER_GUIDANCE = {
                  "fixed by resubmission. A person takes it from here.",
     "not_processed": "Excluded before any assessment ran. See reasons.",
 }
+
+
+def label(decision: Decision) -> str:
+    """The banner label: the decision's own wording if it has one."""
+    return decision.label or TIER_LABELS.get(decision.tier, decision.tier.upper())
+
+
+def guidance(decision: Decision) -> str:
+    """The line under the headline: the decision's own wording if it has one."""
+    return decision.guidance or TIER_GUIDANCE.get(decision.tier, "")
