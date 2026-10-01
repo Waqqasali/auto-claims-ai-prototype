@@ -34,7 +34,7 @@
       "vehicle_model": "Navigator"
     },
     "CLM-1003": {
-      "_scenario": "The surprise. Rear bumper scuff on a sensor-equipped sedan — looks trivially automatable, is not. Expect: ADAS penalty drops it to starting_point.",
+      "_scenario": "The surprise. A rear bumper scuff on a sedan with parking sensors. It looks trivially automatable, and it is not. Expect: the ADAS penalty drops it to starting point.",
       "loss_date": "2026-09-18",
       "loss_description": "Backed into a low post in a parking lot. The rear bumper is scuffed and gouged across the middle.",
       "policy_in_force": true,
@@ -52,7 +52,7 @@
     "CLM-1004": {
       "_scenario": "Authenticity flag. Photo capture time predates the reported loss. Expect: flagged, confidence reduced, routed for review. NOT denied.",
       "loss_date": "2026-09-22",
-      "loss_description": "Sideswiped by a delivery van while parked on the street. There is a crease along the passenger side front fender and door.",
+      "loss_description": "Sideswiped by a delivery van while parked on the street. There is a crease along the front fender on the passenger side.",
       "policy_in_force": true,
       "coverage_applies": true,
       "deductible": 500.0,

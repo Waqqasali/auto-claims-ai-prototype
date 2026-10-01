@@ -168,7 +168,7 @@ _SCRIPTS: dict[str, dict] = {
     # Authenticity flag: capture time predates the loss.
     "CLM-1004": {
         "coverage": {
-            "panels_visible": ["right_front_fender", "right_front_door"],
+            "panels_visible": ["right_front_fender"],
             "missing": [],
             "unfixable": "",
             "coverage_score": 0.88,
@@ -192,7 +192,7 @@ _SCRIPTS: dict[str, dict] = {
                     "confidence": 0.88,
                 },
             ],
-            "damage_panels": ["right_front_fender", "right_front_door"],
+            "damage_panels": ["right_front_fender"],
             "notes": "Assessment proceeds; authenticity concerns are handled "
                      "separately and do not alter the damage judgment.",
         },

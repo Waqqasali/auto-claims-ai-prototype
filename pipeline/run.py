@@ -4,7 +4,7 @@ Stage order matters and is deliberate:
 
   0  gate          Tier 1 exclusions. Legal / wasted-spend only. No AI.
   1a imaging       Deterministic quality measurement. No AI.
-  1b authenticity  Metadata, provenance, reuse. Mostly no AI.
+  1b authenticity  Metadata, provenance, reuse. No AI.
   1c coverage      VLM judges sufficiency. STOPS HERE if inadequate.
   2  assessment    VLM produces line items. Only runs on adequate evidence.
   3  costing       Price lookup (stubbed). No AI.

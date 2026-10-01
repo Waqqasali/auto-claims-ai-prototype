@@ -7,8 +7,11 @@ __pycache__/
 venv/
 env/
 
-# Credentials. .env.example is committed; .env is not.
+# Credentials. .env.example is committed; .env is not. Streamlit Community
+# Cloud keeps the hosted app's key in its secrets settings; a local copy of
+# that file must never reach the repository either.
 .env
+.streamlit/secrets.toml
 
 # Runtime state. The directory is tracked via .gitkeep so a fresh clone has
 # somewhere to write; its contents are per-run and must not be committed.

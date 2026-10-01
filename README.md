@@ -38,7 +38,10 @@ default, and every number matches.
 
 1. **A clean claim.** Open CLM-1001 (Mazda 6, real photographs). It routes to
    **Verify** at 0.94. Open "Why the model proposed each line", then hover the
-   **?** beside each confidence score to see what produced it.
+   **?** beside each confidence score to see what produced it. In live mode,
+   as on the hosted link, the model may add a line to remove and reinstall the
+   headlight at 0.50, and the claim then anchors on that line at **Starting
+   point**: the screen pointing the reviewer at its weakest line.
 2. **Refusal, then recovery.** Open CLM-1002. Attempt 1 is refused: the photos
    are blurred, dark and too small, and the policyholder is told exactly which
    three views to send. Switch to attempt 2 and press **Use the sample
@@ -70,9 +73,10 @@ Worth knowing before you upload your own photos:
   the damage line items come from the claim's script, and the screen says so.
   Quality, date, reuse and confidence checks measure your actual file in every
   mode.
-- The claims' loss dates are in September 2026, so a photo taken today is
-  flagged as outside the 14-day capture window, and a screenshot or a photo sent
-  through a messaging app has lost its date. Both are the checks working.
+- The claims' loss dates are in September 2026. A photo taken more than 14
+  days after the claim's loss date is flagged as outside the capture window,
+  and a screenshot or a photo sent through a messaging app has lost its date.
+  Both are the checks working.
 - Everyone on the hosted link shares one override log and one photo reuse
   ledger, and **Reset demo data** clears both for everyone.
 
@@ -189,7 +193,7 @@ Seven claims are pre-loaded, and between them every routing tier is reachable. P
 | Claim | Scenario | Expected outcome |
 |---|---|---|
 | **CLM-1001** | 2021 Mazda 6, front corner damage. **Real photographs.** Damaged panels carry no sensors on this vehicle | `VERIFY` at 0.94, three line items. The blend line is the weakest but is excluded from the floor, because it paints an undamaged panel |
-| **CLM-1002** attempt 1 | 2020 Lincoln Navigator, curbed alloy wheel. The first submission: blurred, too dark and too small | `MORE PHOTOS NEEDED` — three specific angles requested |
+| **CLM-1002** attempt 1 | 2020 Lincoln Navigator, curbed alloy wheel. The first submission: blurred, too dark and too small | `MORE PHOTOS NEEDED`, three specific angles requested |
 | **CLM-1002** attempt 2 | Awaiting the resubmission. Press **Use the sample resubmission photos**, or upload `samples/navigator_wheel_*.jpg` | Assessment, estimate, and four risks the photos cannot resolve |
 | **CLM-1003** | 2021 Toyota Camry, rear bumper scuff | `STARTING POINT` at 0.60 |
 | **CLM-1004** | Photo EXIF timestamp predates the reported loss | `STARTING POINT`, authenticity flag raised, **not denied** |
@@ -246,31 +250,36 @@ That is the whole product in one screen.
 ## What is real and what is stubbed
 
 Honesty here matters more than coverage. Most of the pipeline runs for real.
-Three components are stubbed because they depend on data that exists only
-inside a carrier: pricing, historical comparables and the policy system.
+Four components are stubbed, because the real data sits inside a carrier or
+with a licensed data provider: pricing, policy records, historical comparables
+and the ADAS zone map. The app lists the same four under **Stubbed
+components** in the sidebar.
 
 | Component | Status | Detail |
 |---|---|---|
 | Image quality measurement | **Real** | Variance of Laplacian for sharpness, mean luminance, resolution. Runs on the actual files in every mode, including mock. |
 | EXIF extraction and consistency | **Real** | Capture time against loss date, device, editing-software signatures. |
-| C2PA presence check | **Real, limited** | Detects a JUMBF/C2PA box. Does **not** cryptographically validate the manifest against a trust list — that needs the `c2pa` library and a trust anchor. |
-| Perceptual hashing | **Real** | Catches the same image reused across claims. |
+| C2PA presence check | **Real, limited** | Detects a JUMBF/C2PA box. Does **not** cryptographically validate the manifest against a trust list, which needs the `c2pa` library and a trust anchor. |
+| Perceptual hashing | **Real** | Catches the same image reused across claims. Only the later submission is flagged; the claim that sent the photo first is left alone. |
 | Evidence sufficiency logic | **Real** | Attempt cap, bail-out conditions, instruction generation, and at most three photos per request in plain words, whatever the model returns. |
-| ADAS zone intersection | **Real logic, thin data** | Seven vehicles hand-entered. Production uses licensed reference data. |
+| ADAS zone intersection | **Real** | Deterministic: the damaged panels against the vehicle's sensor map. The map itself is stubbed, below. |
 | Confidence arithmetic | **Real** | Deterministic, auditable, in `pipeline/confidence.py`. |
 | Routing and tiering | **Real** | Deterministic. |
 | Override capture | **Real** | Writes to `runtime/overrides.jsonl` with mandatory reason codes. |
-| Damage line items | **Real with a key, scripted without** | Mock mode returns scripted assessments so the decision architecture is observable without an API key. |
+| Damage line items | **Model for CLM-1001 and CLM-1002 in live mode, scripted everywhere else** | In live mode the model reads the photographs on CLM-1001 and CLM-1002. Every other claim, and every claim in mock mode, returns its scripted assessment, so the decision architecture is observable without an API key. |
 | Pricing | **Stubbed** | Flat rates from a local table. No regional variation, no vehicle-specific parts, no DRP-negotiated rates. Isolated behind `pricing.price_line()`. |
+| Policy records | **Stubbed** | Local JSON fixture. Assumes real-time programmatic access in production. Isolated behind `gate.load_claim_context()`. |
 | Historical comparables | **Stubbed** | Hand-written rules table with **no observed rates**. Inventing rates would be fabricating evidence. Isolated behind `comparables.lookup()`. |
-| Policy system | **Stubbed** | Local JSON fixture. Assumes real-time programmatic access in production. |
+| ADAS zone map | **Stubbed** | Seven vehicles, hand-entered. Production uses licensed reference data. Isolated behind the lookups in `adas.py`. |
 
 ### How the stubs are shaped, and why it matters
 
 Every stub is isolated behind a function whose signature, output type and
 every consumer are final. Connecting real data means rewriting the bodies
-behind **one module's interface**: `price_line()` for pricing, `lookup()` and
-`retrieval_density()` for comparables. Nothing that consumes them changes.
+behind **one module's interface**: `price_line()` for pricing,
+`load_claim_context()` for policy records, `lookup()` and
+`retrieval_density()` for comparables, and the lookups in `adas.py` for the
+ADAS zone map. Nothing that consumes them changes.
 
 A bad stub hardcodes a value in the middle of the logic and has to be unpicked
 from five places. The difference is whether a prototype is throwaway or is
@@ -296,7 +305,7 @@ exercise the same checks against your own files.
 ```
 Stage 0   gate.py          Tier 1 exclusions               deterministic
 Stage 1a  imaging.py       quality measurement             deterministic
-Stage 1b  authenticity.py  EXIF, C2PA, reuse               mostly deterministic
+Stage 1b  authenticity.py  EXIF, C2PA, reuse               deterministic
 Stage 1c  evidence.py      sufficiency + re-request        VLM for coverage
           ── STOPS HERE if evidence is inadequate ──
 Stage 2   assessment       line items with reasoning       VLM
@@ -309,7 +318,7 @@ Stage 5   routing.py       tier decision                   deterministic
 
 **Two of ten stages use a model.** The rest is deterministic on purpose.
 The eligibility gate and the confidence arithmetic are the auditable safety
-boundary — a model deciding how much to trust another model is not something
+boundary. A model deciding how much to trust another model is not something
 you can explain to a regulator. The NAIC model bulletin on insurers' use of
 AI, adopted by about half of US states, expects a written AI program,
 documented validation, and vendor contracts that allow audit rights and
@@ -328,8 +337,8 @@ up as lower per-item confidence, which the composite score already consumes,
 which narrows the band handled without a claims agent. **The system degrades into
 more human review rather than into wrong answers.**
 
-Everything downstream of that interface — costing, ADAS intersection,
-confidence, routing, the audit trail — is already deterministic and local.
+Everything downstream of that interface is already deterministic and local:
+costing, ADAS intersection, confidence, routing and the audit trail.
 
 ---
 
@@ -361,7 +370,7 @@ config.py               every tunable parameter, all placeholders
 pipeline/               stages, one module each
 providers/              VLM abstraction + mock + Anthropic
 data/                   stubbed reference data, each file documents its stub
-samples/                synthetic test images + generator
+samples/                real Mazda and Navigator photos, synthetic test images, generator
 runtime/                override log, perceptual-hash ledger
 smoke_test.py           pipeline test, all scenarios
 ui_test.py              Streamlit script test, all scenarios

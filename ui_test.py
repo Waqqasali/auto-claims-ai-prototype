@@ -698,6 +698,45 @@ else:
     print("[ OK ] reuse    reuse flagged on every view, never on a claim's "
           "own photos")
 
+# 2b. Only the later submission is flagged. On the hosted app, one visitor
+#     uploading a CLM-1001 photo to another claim flagged both claims: CLM-1001
+#     fell from 0.94 verify to 0.74 for everyone, with a flag naming the copy
+#     as the original. The claim that had the photo first must be left alone.
+if os.path.exists(_cfg.PHASH_LEDGER):
+    os.remove(_cfg.PHASH_LEDGER)
+_mazda = [f"samples/mazda6_{n}.jpg" for n in ("front", "corner", "damage")]
+_run.run("CLM-1001", _mazda, attempt=1, record_hashes=True)
+_copied = [_run.run("CLM-1003", [_mazda[2]], attempt=1, user_photos=True,
+                    record_hashes=True) for _ in range(2)]
+_named = all(any(f.startswith("Visually near-identical") and "CLM-1001" in f
+                 for p in r.photos for f in p.authenticity_flags)
+             for r in _copied)
+_orig = _run.run("CLM-1001", _mazda, attempt=1, record_hashes=True)
+_orig_flagged = any("previously submitted" in f for p in _orig.photos
+                    for f in p.authenticity_flags)
+# And on screen, where every visitor would see it.
+at = AppTest.from_file("app.py", default_timeout=120).run()
+_conf_shown = [m.value for m in at.metric if m.label == "Claim confidence"]
+_tier_shown = " ".join(str(getattr(e, "value", "") or getattr(e, "body", ""))
+                       for e in at.get("html"))
+if not _named:
+    print("[FAIL] later: the copy on CLM-1003 was not flagged as reuse of "
+          "CLM-1001")
+    fails += 1
+elif _orig_flagged or _orig.decision.tier != "verify" \
+        or _orig.confidence.claim_confidence != 0.94:
+    print(f"[FAIL] later: the original claim CLM-1001 is now "
+          f"{_orig.decision.tier} at {_orig.confidence.claim_confidence:.2f}, "
+          f"flagged={_orig_flagged}")
+    fails += 1
+elif at.exception or _conf_shown != ["0.94"] or "VERIFY" not in _tier_shown:
+    print(f"[FAIL] later: CLM-1001 on screen shows {_conf_shown} "
+          f"({[e.message for e in at.exception]})")
+    fails += 1
+else:
+    print("[ OK ] later    a CLM-1001 photo on CLM-1003 flags CLM-1003, naming "
+          "CLM-1001; CLM-1001 still verifies at 0.94")
+
 # 3. Capture time comes from the Exif sub-IFD, where cameras write it. Taken
 #    before the CLM-1003 loss (2026-09-18), edited after it.
 _img_path = os.path.join(_tmp, "edited_after_capture.jpg")

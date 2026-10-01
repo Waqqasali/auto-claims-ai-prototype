@@ -27,6 +27,7 @@ import streamlit as st
 from config import (
     ADAS_CONFIDENCE_PENALTY,
     AUTHENTICITY_PENALTY,
+    CAPTURE_WINDOW_DAYS_AFTER,
     MAX_REQUEST_ATTEMPTS,
     OVERRIDE_LOG,
     PHASH_LEDGER,
@@ -246,7 +247,9 @@ with st.sidebar:
     with st.expander("New here? Five things to try"):
         st.markdown(
             "1. **CLM-1001**: a clean claim, **Verify** at 0.94. Hover the **?** "
-            "beside each score.\n"
+            "beside each score. In live mode the model may add a line to "
+            "remove and reinstall the headlight at 0.50, and the claim then "
+            "anchors on that line at **Starting point**.\n"
             "2. **CLM-1002**: attempt 1 is refused. Switch to attempt 2 and press "
             "**Use the sample resubmission photos**: **Verify** at 0.92, with "
             "four risks no photo can confirm.\n"
@@ -264,8 +267,9 @@ with st.sidebar:
             "scores can differ; every other claim matches exactly. "
             "Then try to break it: a blurry photo, a screenshot, a file that is "
             "not an image, or the same photo on two claims. In mock mode the "
-            "line items are scripted. Loss dates are in September 2026, so a "
-            "photo taken today is flagged as outside the capture window."
+            "line items are scripted. Loss dates are in September 2026, and a "
+            f"photo taken more than {CAPTURE_WINDOW_DAYS_AFTER} days after the "
+            "claim's loss date is flagged as outside the capture window."
         )
 
     claims = gate.list_claims()
@@ -346,10 +350,15 @@ with st.sidebar:
         )
 
     st.divider()
+    # The same four, in the same order, as the README's "What is real and what
+    # is stubbed". A stub missing from either list is a stub presented as real.
     with st.expander("Stubbed components"):
-        st.caption(f"**Pricing** — {pricing.STUB_NOTE}")
-        st.caption(f"**Comparables** — {comparables.STUB_NOTE}")
-        st.caption("**Policy system** — read from a local JSON fixture.")
+        st.caption(f"**Pricing.** {pricing.STUB_NOTE}")
+        st.caption("**Policy records.** Read from a local JSON fixture, not a "
+                   "policy administration system.")
+        st.caption(f"**Historical comparables.** {comparables.STUB_NOTE}")
+        st.caption("**ADAS zone map.** Seven vehicles, hand-entered. "
+                   "Production uses licensed reference data.")
 
     SHOW_RATIONALE = st.toggle(
         "Show design rationale",
@@ -404,7 +413,14 @@ if uploaded:
         # each other and the displayed filename stays the one the user chose.
         folder = os.path.join(RUNTIME_DIR, "uploads", claim_id, f"{i:02d}")
         os.makedirs(folder, exist_ok=True)
-        dest = os.path.join(folder, f.name)
+        # The name is whatever the browser sent. An absolute path or one with
+        # ../ in it would write outside the uploads folder, so only the final
+        # component is used. A name that leaves nothing usable gets a
+        # placeholder rather than writing to the folder itself.
+        safe_name = os.path.basename(f.name)
+        if safe_name in ("", ".", ".."):
+            safe_name = "upload"
+        dest = os.path.join(folder, safe_name)
         with open(dest, "wb") as fh:
             fh.write(f.getbuffer())
         why = imaging.unreadable_reason(dest)
@@ -589,19 +605,19 @@ elif using_sample:
 elif uploaded:
     if VLM_PROVIDER == "anthropic":
         st.info(
-            f"Running your {len(paths)} photo(s) against **{claim_id}** — its "
+            f"Running your {len(paths)} photo(s) against **{claim_id}**: its "
             f"policy, vehicle and loss date. Every stage reads your actual "
             f"files, including the model.",
             icon="📎",
         )
     else:
         st.info(
-            f"Running your {len(paths)} photo(s) against **{claim_id}** — its "
+            f"Running your {len(paths)} photo(s) against **{claim_id}**: its "
             f"policy, vehicle and loss date. Image quality, EXIF, C2PA, reuse "
             f"hashing, evidence sufficiency, confidence and routing all measure "
             f"your actual files. **The damage line items are this claim's "
-            f"scripted assessment, not a reading of your photographs** — mock "
-            f"mode cannot see them. Set `VLM_PROVIDER=anthropic` for a real "
+            f"scripted assessment, not a reading of your photographs,** because "
+            f"mock mode cannot see them. Set `VLM_PROVIDER=anthropic` for a real "
             f"reading.",
             icon="📎",
         )
@@ -671,7 +687,7 @@ if not result.gate_passed:
     st.subheader("Why this claim was not processed")
     rationale(
         "Every Tier 1 exclusion is a legal or wasted-spend reason. None of them "
-        "are 'the model might do badly' — those are handled downstream by "
+        "are 'the model might do badly'; those are handled downstream by "
         "confidence and routing. A narrow processing gate is self-confirming: "
         "if the system only ever sees easy claims it can never learn where the "
         "real boundary sits."
@@ -809,7 +825,7 @@ if adas_hits:
         st.warning(line, icon="📡")
     st.caption("No calibration line item is priced. This is a routing signal, not a charge.")
     rationale(
-        "A photo cannot establish that calibration is required — the damage may "
+        "A photo cannot establish that calibration is required: the damage may "
         "be a scuff nowhere near the sensor bracket. Charging on suspicion "
         "overstates the estimate and starts disputes with shops. CCC Q3 2025: "
         "calibrations appear on 35.6% of DRP estimates, up from 26.9% year over "
@@ -825,11 +841,11 @@ if assessment.hidden_damage:
             if cand.observed_rate is not None
             else "rate unavailable (stubbed corpus)"
         )
-        st.info(f"**{cand.part}** — {cand.rationale} _({rate})_", icon="🔧")
+        st.info(f"**{cand.part}:** {cand.rationale} _({rate})_", icon="🔧")
     st.caption("Informational. No confidence penalty is applied in the MVP.")
     rationale(
         "Without observed rates from a real claims corpus any weight would be "
-        "arbitrary, and the signal fires on nearly every claim — a signal that "
+        "arbitrary, and the signal fires on nearly every claim. A signal that "
         "fires on everything carries no information. Becomes rate-weighted once "
         "comparables are connected."
     )
@@ -843,7 +859,8 @@ st.divider()
 st.subheader("Draft estimate")
 st.caption(
     f"Total \\${assessment.estimate_total:,.2f} before deductible "
-    f"(\\${ctx.deductible:,.0f}). Pricing is stubbed — treat totals as illustrative."
+    f"(\\${ctx.deductible:,.0f}). Pricing is stubbed, so treat totals as "
+    f"illustrative."
 )
 
 # A line the costing stage could not price counts as zero in the total. Saying
@@ -926,7 +943,7 @@ edited = st.data_editor(
 with st.expander("Why the model proposed each line"):
     for li in assessment.line_items:
         st.markdown(
-            f"**{li.operation} — {li.part}** _(confidence {li.confidence:.2f})_  \n"
+            f"**{li.operation} {li.part}** _(confidence {li.confidence:.2f})_  \n"
             f"{li.reasoning}"
         )
     rationale(
@@ -1066,7 +1083,7 @@ for row in (delta.get("added_rows") or []):
     changes.append({
         "id": f"added:{_digest}#{_n}",
         "row": None, "kind": "added", "line": label,
-        "field": "line item", "before": "—", "after": label,
+        "field": "line item", "before": "", "after": label,
     })
 
 for idx in (delta.get("deleted_rows") or []):
@@ -1077,7 +1094,7 @@ for idx in (delta.get("deleted_rows") or []):
     changes.append({
         "id": f"removed:{idx}",
         "row": idx, "kind": "removed", "line": label,
-        "field": "line item", "before": label, "after": "—",
+        "field": "line item", "before": label, "after": "",
     })
 
 if changes:
@@ -1086,7 +1103,7 @@ if changes:
     st.caption(
         f"Revised total **\\${revised:,.2f}** "
         f"({'+' if delta_total >= 0 else '−'}\\${abs(delta_total):,.2f} "
-        f"against the draft). Pricing is stubbed — totals are illustrative."
+        f"against the draft). Pricing is stubbed, so totals are illustrative."
     )
 
 st.markdown("#### Reviewer decision")
@@ -1199,7 +1216,10 @@ if submitted:
         "claim_id": claim_id,
         "attempt": attempt,
         "vehicle": ctx.vehicle_label,
-        "provider": VLM_PROVIDER,
+        # The provider that produced this draft, not the app setting. In live
+        # mode most claims still run on mock data, and a log that called them
+        # live would mislabel the calibration input.
+        "provider": claim_provider,
         "claim_confidence": conf.claim_confidence,
         "routing_tier": tier,
         "adas_involved": assessment.adas_zones_involved,
@@ -1263,7 +1283,7 @@ if os.path.exists(OVERRIDE_LOG):
                                  "field": o.get("field", "?"),
                                  "reason": o.get("reason_code", "?")})
             else:
-                flat.append({**base, "line": "—", "field": "—",
+                flat.append({**base, "line": "", "field": "",
                              "reason": "no change"})
         if flat:
             st.dataframe(pd.DataFrame(flat), hide_index=True, width='stretch')

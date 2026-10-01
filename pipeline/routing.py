@@ -1,26 +1,31 @@
 """Routing: what the reviewer is shown, and how it is framed.
 
 In the MVP, EVERY claim that clears the Tier 1 gate is reviewed by a human.
-Nothing is auto-approved. Routing therefore does not decide whether a person
-is involved — it decides how the draft is PRESENTED, so the reviewer knows
-how much to trust it.
+Nothing is auto-approved, in this build or in either phase of the PRD.
+Routing therefore does not decide whether a person is involved. It decides
+how the draft is PRESENTED, so the reviewer knows how much to trust it.
 
 That framing matters. A low-confidence draft is still worth showing, because
 even a partial line item list saves typing. What destroys reviewer trust is a
 bad draft presented as a good one.
 
-Automated authority is a Phase 3 concept and lives behind AUTOMATION_ENABLED,
-which is False. When it is eventually switched on, it opens only for claims
-inside a proven confidence band with no ADAS involvement and no flags — and
-only once the thresholds have been calibrated against real override and
-supplement outcomes.
+The PRD has two phases, and they differ in who reviews the draft, not in
+whether anyone does. In Phase 1 every draft goes to a claims agent. In Phase 2
+a draft inside a proven confidence band, with no ADAS involvement and below
+an authority ceiling, goes straight to the senior claims adjuster, who
+approves or rejects it. This build is Phase 1. The band cannot be drawn
+until the thresholds are calibrated against real override and supplement
+outcomes.
 """
 
 from config import TIER_STARTING_POINT_MIN, TIER_VERIFY_MIN
 from pipeline.models import Assessment, ConfidenceBreakdown, Decision
 
-# Phase 3. Deliberately off. Flipping this without calibration evidence would
-# be the single most dangerous change anyone could make to this system.
+# Stands for the Phase 2 route: inside the proven band, the draft skips the
+# claims agent and goes to the senior claims adjuster. A person still approves
+# every claim. Deliberately off, and the route is not built. Turning it on
+# without calibration evidence would be the most dangerous change anyone could
+# make to this system.
 AUTOMATION_ENABLED = False
 
 
@@ -41,7 +46,7 @@ def decide(
     strong_flags = [f for f in authenticity_flags if flag_strength(f) == STRONG]
     if strong_flags:
         reasons.append(
-            f"{len(strong_flags)} strong media authenticity concern(s) — routed "
+            f"{len(strong_flags)} strong media authenticity concern(s). Routed "
             f"for review, not denied."
         )
     elif authenticity_flags:
@@ -81,7 +86,7 @@ def decide(
         )
     elif score >= TIER_STARTING_POINT_MIN:
         tier = "starting_point"
-        headline = "Use as a starting point — specific risks identified"
+        headline = "Use as a starting point: specific risks identified"
         reasons.insert(
             0,
             f"Confidence {score:.2f} sits between the starting-point threshold "
@@ -90,7 +95,7 @@ def decide(
         )
     else:
         tier = "low_confidence"
-        headline = "Low confidence — do not anchor on these figures"
+        headline = "Low confidence: do not anchor on these figures"
         reasons.insert(
             0,
             f"Confidence {score:.2f} is below the starting-point threshold "
@@ -99,7 +104,7 @@ def decide(
 
     if AUTOMATION_ENABLED:
         reasons.append(
-            "NOTE: automated authority is enabled. It should not be without "
+            "NOTE: Phase 2 routing is enabled. It should not be without "
             "calibration evidence."
         )
 
