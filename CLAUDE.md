@@ -55,11 +55,13 @@ visible on screen and invisible to the tests.
 3. **Never rewrite history or authorship, and never force push.** Commits are
    authored by the repository owner. Do not amend or re-author existing
    commits for any reason, including tool or hook suggestions.
-4. **Stay honest on screen.** Mock mode, scripted line items, synthetic and
-   AI-generated sample images (including which had their AI label removed),
-   stubbed pricing and comparables, and placeholder weights and
-   thresholds are all disclosed where they appear. Keep them disclosed. Never
-   present scripted or synthetic output as real.
+4. **Stay honest on screen.** Mock mode, scripted line items, stubbed pricing
+   and comparables, and placeholder weights and thresholds are all disclosed
+   where they appear. Keep them disclosed. Never present scripted or synthetic
+   output as real. One exception, by the owner's choice: which sample images
+   are AI-generated, and which had their AI label removed, is disclosed in the
+   README's "Which sample images are real" table, not under each image. Keep
+   that table complete and accurate, and do not add per-image captions back.
 5. **Only two stages call a model** (evidence coverage and damage assessment,
    behind `providers/`). Everything else is deterministic arithmetic or lookup
    and must stay that way.
@@ -110,6 +112,6 @@ sidebar, and a test checks both.
   (CLM-1002 attempt 1), AI-generated images for CLM-1003, 1004, 1007 and 1008
   (AI label removed and placeholder EXIF added on all but the CLM-1008 Civic),
   and synthetic test images from `make_samples.py`. Each claim's list is
-  `SCENARIO_PHOTOS` in `config.py`; the on-screen disclosure for each file is
-  `SAMPLE_DISCLOSURES` in `app.py`. Photos from different claims must never be
+  `SCENARIO_PHOTOS` in `config.py`; what each file is, is disclosed in the
+  README (see rule 4). Photos from different claims must never be
   near-duplicates; a test enforces it.
