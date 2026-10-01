@@ -105,9 +105,9 @@ ADAS_CONFIDENCE_PENALTY = 0.25      # flat subtraction when a sensor zone is hit
 HIDDEN_DAMAGE_PENALTY_EACH = 0.05   # per candidate, capped below
 HIDDEN_DAMAGE_PENALTY_CAP = 0.15
 # Scaled to how strong the signal is, and taken from the strongest flag on the
-# claim rather than summed. A flat 0.20 treated missing EXIF, which most photos
-# sent through a messaging app have lost, the same as a photograph taken before
-# the accident. Placeholders, like every weight here.
+# claim rather than summed. A flat 0.20 treated missing EXIF, which a screenshot
+# or a shared photo can lack, the same as a photograph taken before the
+# accident. Placeholders, like every weight here.
 AUTHENTICITY_PENALTY = {"strong": 0.20, "moderate": 0.10, "weak": 0.05}
 AUTHENTICITY_FLAG_PENALTY = AUTHENTICITY_PENALTY["strong"]   # the maximum
 

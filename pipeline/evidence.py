@@ -5,11 +5,11 @@ redesign how people photograph damage. The only lever available is the right
 to refuse to proceed on inadequate input.
 
 The loop is bounded at two attempts because it is a retention surface, not
-just a data quality gate. J.D. Power's 2025 study of 5,958 claims found
-customers rating their claims experience "poor" or "just OK" have a 52%
-likelihood of switching carriers, against 4% for "excellent". Someone who
-has just had an accident and receives three vague resubmission requests is
-exactly that cohort. Vague, repeated asks are where an efficiency feature
+just a data quality gate. J.D. Power's 2025 Claims Digital Experience Study
+(5,958 evaluations): 52% of auto and home customers who rate their digital
+claim experience poor or just OK are likely to leave or not renew, against 4%
+for excellent or perfect. Someone who has just had an accident and receives
+three vague resubmission requests is exactly that cohort. Vague, repeated asks are where an efficiency feature
 destroys more value than it creates.
 
 Split by design:

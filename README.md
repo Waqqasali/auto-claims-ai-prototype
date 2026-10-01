@@ -6,8 +6,8 @@ An assessment and routing layer that sits between damage documentation and
 estimate approval in an auto physical damage claim.
 
 **It is not an estimating engine.** CCC's straight-through-processing product
-is already deployed by 15 insurers including seven of the top ten US carriers
-by direct written premium, covering roughly half of US auto claims volume.
+had been adopted by 15 insurers by 2023, including seven of the top ten US
+carriers by direct written premium, representing 50% of US auto claims volume.
 Building another estimator would be competing where the market is settled.
 
 What this does instead is decide **how much to trust an assessment, and what
@@ -334,7 +334,7 @@ boundary. A model deciding how much to trust another model is not something
 you can explain to a regulator. The NAIC model bulletin on insurers' use of
 AI, adopted by about half of US states, expects a written AI program,
 documented validation, and vendor contracts that allow audit rights and
-require cooperation with regulators where appropriate.
+require cooperation with regulators where appropriate and available.
 
 ### The sovereignty answer
 

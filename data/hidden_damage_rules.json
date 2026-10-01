@@ -1,6 +1,6 @@
 {
   "_comment": "STUBBED comparables. In production comparables.lookup() queries the carrier's historical claims corpus: 'find claims with a similar damage pattern on a similar vehicle, and report what the repair actually involved after teardown', returning observed rates like '38% of 340 comparable claims involved radiator support damage'. That corpus exists only inside a carrier. Here it is a hand-written rules table with no observed rates, because inventing rates would be fabricating evidence. The interface is final; only the body of lookup() changes.",
-  "_why_this_matters": "Tractable concedes its AI has not reduced supplement amounts because it only assesses visually before teardown. Pre-teardown blindness is the hard information limit in this domain. This component does not remove it — it uses history to say what is usually behind the panel.",
+  "_why_this_matters": "A Tractable executive said in 2024 he had not seen an AI tool reduce supplement amounts, because AI assesses damage visually, before teardown. Pre-teardown blindness is the hard information limit in this domain. This component does not remove it — it uses history to say what is usually behind the panel.",
   "patterns": {
     "front_bumper": [
       {

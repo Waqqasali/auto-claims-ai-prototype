@@ -14,9 +14,9 @@ deepfakes and 66% believe media fraud often goes undetected, against 36% of
 consumers who would consider altering a claim image (55% of Gen Z).
 
 DESIGN RULE, and the thing that keeps this defensible:
-Absence of provenance is NOT evidence of fraud. Most phones emit no C2PA
-Content Credentials, and ordinary messaging apps strip EXIF in transit.
-C2PA itself states it shows provenance history rather than proving
+Absence of provenance is NOT evidence of fraud. C2PA's own guidance is that
+content without Content Credentials should not be treated as less trusted by
+default, and ordinary sharing can remove EXIF. C2PA itself states it shows provenance history rather than proving
 authenticity. So missing metadata produces a CONFIDENCE REDUCTION, never a
 rejection. This module flags; referral to the Special Investigation Unit is
 the reviewer's decision, recorded as a rejection reason. It never denies a claim.
@@ -79,8 +79,8 @@ def _c2pa_present(path: str) -> bool:
     cryptographically validate the manifest or check it against a trust list.
     Full validation needs the c2pa library and a trust anchor, which is a
     production concern. The result is shown to the reviewer and does not move
-    the score either way: most phones write no manifest, so its absence is
-    normal, and a manifest nobody has validated proves nothing.
+    the score either way: a missing manifest is normal, and a manifest nobody
+    has validated proves nothing.
     """
     try:
         with open(path, "rb") as fh:
@@ -113,8 +113,8 @@ def _declared_ai(path: str) -> tuple[str, str] | None:
 
     HONEST LIMIT: this reads a label. It is reliable when present, because a
     genuine camera photo has no reason to carry it, and silent when absent,
-    because screenshots, messaging apps and most social platforms strip it,
-    and anyone can remove it on purpose. It is one signal among several and
+    because a screenshot or ordinary sharing can remove it, and anyone can
+    remove it on purpose. It is one signal among several and
     never a test of authenticity on its own.
     """
     data = _metadata_bytes(path)
@@ -184,9 +184,8 @@ def _save_ledger(ledger: dict) -> None:
 # How much each signal should move the score. Only a STRONG signal (the same
 # photo on another claim, a photo taken before the loss, or a label or
 # generator name saying AI made or changed it) bars the verify tier. Missing
-# EXIF is WEAK: it is the ordinary state of a photo that went through a
-# messaging app, and treating it as suspicious would make most real claims
-# unverifiable. Anything not listed here is MODERATE by default, and a
+# EXIF is WEAK: a screenshot or a shared photo can lack it, and treating it as
+# suspicious would make most real claims unverifiable. Anything not listed here is MODERATE by default, and a
 # test checks that every message this module writes is classified on purpose.
 STRONG, MODERATE, WEAK = "strong", "moderate", "weak"
 _STRENGTH_BY_PREFIX = (
@@ -214,9 +213,9 @@ def screen(photo: Photo, ctx: ClaimContext, record_hash: bool = True) -> Photo:
     # --- 1. Metadata presence -------------------------------------------
     if not photo.exif_present:
         flags.append(
-            "No EXIF metadata. Common and innocent, since messaging apps strip "
-            "it, but it removes our ability to corroborate capture time or "
-            "device."
+            "No EXIF metadata. Common and innocent, since a screenshot or "
+            "ordinary sharing can remove it, but it removes our ability to "
+            "corroborate capture time or device."
         )
 
     # --- 2. Capture time against the reported loss date -----------------

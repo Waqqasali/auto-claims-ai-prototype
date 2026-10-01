@@ -294,7 +294,7 @@ with st.sidebar:
         help="Your photos replace the demo set and run against this claim's "
              "policy and vehicle. Quality, authenticity and confidence all "
              "measure your actual file. A photo that reached you through a "
-             "messaging app or browser has usually lost its EXIF, which "
+             "messaging app or browser may have lost its EXIF, which "
              "raises an authenticity flag.",
     )
 
@@ -740,11 +740,12 @@ if result.evidence and result.evidence.status == "re_request":
     st.subheader("Message sent to the policyholder")
     st.caption(f"Attempt {attempt} of {MAX_REQUEST_ATTEMPTS}. After that a person takes over.")
     rationale(
-        "Specific and actionable, never 'send better photos'. J.D. Power 2025: "
-        "customers rating a claims experience poor or just OK carry a 52% "
-        "likelihood of switching carriers, against 4% for excellent. A vague "
-        "repeated ask is where an efficiency feature destroys more value than "
-        "it creates."
+        "Specific and actionable, never 'send better photos'. J.D. Power's 2025 "
+        "Claims Digital Experience Study (5,958 evaluations): 52% of auto and "
+        "home customers who rate their digital claim experience poor or just "
+        "OK are likely to leave or not renew, against 4% for excellent or "
+        "perfect. A vague repeated ask is where an efficiency feature destroys "
+        "more value than it creates."
     )
     st.code(result.evidence.instruction, language=None, wrap_lines=True)
     st.info(

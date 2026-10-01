@@ -3,8 +3,7 @@
 Why this exists: CCC Crash Course data shows calibrations now appear on
 35.6% of DRP estimates (Q3 2025), up from 26.9% a year earlier, and 51.5% of
 those calibrations appear on SUPPLEMENTS rather than initial estimates. Half
-the time this work is missed at estimate time. It is the largest single
-source of estimate error in the industry right now, and it is invisible to a
+the time this work is missed at estimate time, and it is invisible to a
 photograph.
 
 What this module does NOT do, and why:

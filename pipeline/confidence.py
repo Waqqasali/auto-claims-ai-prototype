@@ -64,8 +64,7 @@ _FLAG_REASON = (
 _STRENGTH_NOTE = {
     "strong": "That is a strong signal, so this claim cannot be marked verify.",
     "moderate": "That is a moderate signal: worth a look, often innocent.",
-    "weak": "That is a weak signal: messaging apps remove this data from most "
-            "photos.",
+    "weak": "That is a weak signal: ordinary sharing can remove this data.",
 }
 
 

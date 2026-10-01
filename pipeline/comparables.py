@@ -23,9 +23,10 @@ WHY THE STUB IS SHAPED THIS WAY
 
 WHY THE FEATURE EARNS ITS PLACE
     Pre-teardown blindness is the hard information limit in this domain.
-    Tractable concedes its AI has not reduced supplement amounts precisely
-    because it only assesses visually before teardown. We cannot see behind
-    the panel — but history can say what is usually back there.
+    A Tractable executive said in 2024 he had not seen an AI tool reduce
+    supplement amounts, because AI assesses damage visually, before teardown.
+    We cannot see behind the panel — but history can say what is usually
+    back there.
 
 DESIGN RULE
     The flag must be CONSUMED, never generated and ignored. In the MVP it is
